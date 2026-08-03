@@ -54,7 +54,49 @@ Require `Authorization: Bearer <accessToken>`.
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/v1/users/me` | Current user |
-| `PATCH` | `/v1/users/me` | Update `{ "name": "..." }` |
+| `PATCH` | `/v1/users/me` | Update profile fields |
+
+Brand / influencer profile fields (all optional on PATCH; role-specific required sets enforced server-side):
+
+```json
+{
+  "name": "سارا محمدی",
+  "category": "BEAUTY",
+  "city": "تهران",
+  "website": "@sara",
+  "followerRange": "FROM_10K_50K",
+  "goal": "AWARENESS",
+  "businessSize": "SME"
+}
+```
+
+Enums: `BrandCategory`, `BrandGoal`, `BusinessSize`, `FollowerRange` — see Swagger.
+
+## Campaigns
+
+Require `Authorization: Bearer <accessToken>` and `role = BRAND`.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/v1/campaigns` | Create campaign |
+| `GET` | `/v1/campaigns` | List my campaigns |
+| `GET` | `/v1/campaigns/:id` | Get one campaign I own |
+| `PATCH` | `/v1/campaigns/:id` | Update campaign (incl. status) |
+
+```json
+{
+  "title": "لانچ محصول تابستانی",
+  "brief": "نیاز به ریویو محصول در ریلز",
+  "category": "BEAUTY",
+  "city": "تهران",
+  "deliverable": "REEL",
+  "budgetMin": 5000000,
+  "budgetMax": 15000000,
+  "status": "DRAFT"
+}
+```
+
+Status: `DRAFT` | `OPEN` | `CLOSED`. Deliverable: `STORY` | `POST` | `REEL`.
 
 ## Health
 

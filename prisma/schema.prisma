@@ -16,14 +16,91 @@ enum UserRole {
   BRAND
 }
 
+enum BrandCategory {
+  BEAUTY
+  FASHION
+  FOOD
+  HEALTH
+  TECH
+  EDUCATION
+  TRAVEL
+  SPORTS
+  HOME
+  FINANCE
+  ENTERTAINMENT
+  OTHER
+}
+
+enum BrandGoal {
+  AWARENESS
+  SALES
+  CONTENT
+  LAUNCH
+}
+
+enum BusinessSize {
+  SOLO
+  SME
+  AGENCY
+  ENTERPRISE
+}
+
+enum FollowerRange {
+  UNDER_1K
+  FROM_1K_5K
+  FROM_5K_10K
+  FROM_10K_50K
+  FROM_50K_100K
+  FROM_100K_500K
+  OVER_500K
+}
+
+enum CampaignStatus {
+  DRAFT
+  OPEN
+  CLOSED
+}
+
+enum DeliverableType {
+  STORY
+  POST
+  REEL
+}
+
 model User {
-  id        String   @id @default(cuid())
-  phone     String   @unique
-  name      String?
-  role      UserRole @default(INFLUENCER)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  otps      Otp[]
+  id            String          @id @default(cuid())
+  phone         String          @unique
+  name          String?
+  role          UserRole        @default(INFLUENCER)
+  category      BrandCategory?
+  city          String?
+  website       String?
+  goal          BrandGoal?
+  businessSize  BusinessSize?
+  followerRange FollowerRange?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  otps          Otp[]
+  campaigns     Campaign[]
+}
+
+model Campaign {
+  id          String          @id @default(cuid())
+  brandId     String
+  brand       User            @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  title       String
+  brief       String
+  category    BrandCategory
+  city        String
+  deliverable DeliverableType
+  budgetMin   Int?
+  budgetMax   Int?
+  status      CampaignStatus  @default(DRAFT)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([brandId, status])
+  @@index([status, category, city])
 }
 
 model Otp {

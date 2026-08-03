@@ -126,6 +126,12 @@ export class AuthService {
         phone: user.phone,
         name: user.name,
         role: user.role,
+        category: user.category,
+        city: user.city,
+        website: user.website,
+        goal: user.goal,
+        businessSize: user.businessSize,
+        followerRange: user.followerRange,
       },
     };
   }

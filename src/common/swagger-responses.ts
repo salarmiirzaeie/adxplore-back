@@ -1,5 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { UserRole } from '../generated/prisma/client';
+import {
+  BrandCategory,
+  BrandGoal,
+  BusinessSize,
+  FollowerRange,
+  UserRole,
+} from '../generated/prisma/client';
 
 export class RequestOtpResponse {
   @ApiProperty({ example: true })
@@ -19,11 +25,29 @@ export class AuthUserResponse {
   @ApiProperty({ example: '09121234567' })
   phone!: string;
 
-  @ApiPropertyOptional({ example: 'سارا محمدی', nullable: true })
+  @ApiPropertyOptional({ example: 'برند نوآ', nullable: true })
   name!: string | null;
 
   @ApiProperty({ enum: UserRole, example: UserRole.INFLUENCER })
   role!: UserRole;
+
+  @ApiPropertyOptional({ enum: BrandCategory, nullable: true })
+  category!: BrandCategory | null;
+
+  @ApiPropertyOptional({ example: 'تهران', nullable: true })
+  city!: string | null;
+
+  @ApiPropertyOptional({ example: 'https://instagram.com/brand', nullable: true })
+  website!: string | null;
+
+  @ApiPropertyOptional({ enum: BrandGoal, nullable: true })
+  goal!: BrandGoal | null;
+
+  @ApiPropertyOptional({ enum: BusinessSize, nullable: true })
+  businessSize!: BusinessSize | null;
+
+  @ApiPropertyOptional({ enum: FollowerRange, nullable: true })
+  followerRange!: FollowerRange | null;
 }
 
 export class VerifyOtpResponse {
@@ -55,6 +79,24 @@ export class UserProfileResponse {
 
   @ApiProperty({ enum: UserRole, example: UserRole.INFLUENCER })
   role!: UserRole;
+
+  @ApiPropertyOptional({ enum: BrandCategory, nullable: true })
+  category!: BrandCategory | null;
+
+  @ApiPropertyOptional({ example: 'تهران', nullable: true })
+  city!: string | null;
+
+  @ApiPropertyOptional({ example: 'https://instagram.com/brand', nullable: true })
+  website!: string | null;
+
+  @ApiPropertyOptional({ enum: BrandGoal, nullable: true })
+  goal!: BrandGoal | null;
+
+  @ApiPropertyOptional({ enum: BusinessSize, nullable: true })
+  businessSize!: BusinessSize | null;
+
+  @ApiPropertyOptional({ enum: FollowerRange, nullable: true })
+  followerRange!: FollowerRange | null;
 
   @ApiProperty()
   createdAt!: Date;
