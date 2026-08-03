@@ -1,14 +1,29 @@
-import { Body, Controller, Get, Patch, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Delete,
+  Get,
+  Patch,
+  Post,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+  Body,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
+import { memoryStorage } from 'multer';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { UserProfileResponse } from '../common/swagger-responses';
 import type { User } from '../generated/prisma/client';
+import { UPLOAD_MAX_BYTES } from '../uploads/uploads.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UsersService } from './users.service';
 
@@ -31,5 +46,38 @@ export class UsersController {
   @ApiOkResponse({ type: UserProfileResponse })
   updateMe(@CurrentUser() user: User, @Body() dto: UpdateProfileDto) {
     return this.users.updateProfile(user.id, dto);
+  }
+
+  @Post('me/photo')
+  @ApiOperation({ summary: 'Upload profile photo' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', format: 'binary' },
+      },
+      required: ['file'],
+    },
+  })
+  @ApiOkResponse({ type: UserProfileResponse })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: { fileSize: UPLOAD_MAX_BYTES },
+    }),
+  )
+  uploadPhoto(
+    @CurrentUser() user: User,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.users.updatePhoto(user, file);
+  }
+
+  @Delete('me/photo')
+  @ApiOperation({ summary: 'Remove profile photo' })
+  @ApiOkResponse({ type: UserProfileResponse })
+  removePhoto(@CurrentUser() user: User) {
+    return this.users.removePhoto(user);
   }
 }

@@ -5,11 +5,15 @@ import {
 } from '@nestjs/common';
 import { UserRole, type User } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { UploadsService } from '../uploads/uploads.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly uploads: UploadsService,
+  ) {}
 
   toPublic(user: User) {
     return {
@@ -17,6 +21,7 @@ export class UsersService {
       phone: user.phone,
       name: user.name,
       role: user.role,
+      photoUrl: user.photoUrl,
       category: user.category,
       city: user.city,
       website: user.website,
@@ -110,5 +115,31 @@ export class UsersService {
       },
     });
     return this.toPublic(user);
+  }
+
+  async updatePhoto(user: User, file: Express.Multer.File) {
+    const relative = this.uploads.saveImage('avatars', file);
+    const photoUrl = this.uploads.toPublicUrl(relative);
+
+    if (user.photoUrl) {
+      this.uploads.deleteByPublicUrl(user.photoUrl);
+    }
+
+    const updated = await this.prisma.user.update({
+      where: { id: user.id },
+      data: { photoUrl },
+    });
+    return this.toPublic(updated);
+  }
+
+  async removePhoto(user: User) {
+    if (user.photoUrl) {
+      this.uploads.deleteByPublicUrl(user.photoUrl);
+    }
+    const updated = await this.prisma.user.update({
+      where: { id: user.id },
+      data: { photoUrl: null },
+    });
+    return this.toPublic(updated);
   }
 }

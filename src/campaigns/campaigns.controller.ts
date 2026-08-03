@@ -1,22 +1,33 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
   Post,
+  UploadedFiles,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import {
   ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
   ApiCreatedResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
+import { memoryStorage } from 'multer';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import type { User } from '../generated/prisma/client';
+import {
+  CAMPAIGN_MAX_IMAGES,
+  UPLOAD_MAX_BYTES,
+} from '../uploads/uploads.service';
 import { CampaignsService } from './campaigns.service';
 import { CampaignResponse } from './dto/campaign-response';
 import { CreateCampaignDto } from './dto/create-campaign.dto';
@@ -59,5 +70,46 @@ export class CampaignsController {
     @Body() dto: UpdateCampaignDto,
   ) {
     return this.campaigns.update(user, id, dto);
+  }
+
+  @Post(':id/images')
+  @ApiOperation({ summary: 'Upload campaign images (brand owner)' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        files: {
+          type: 'array',
+          items: { type: 'string', format: 'binary' },
+        },
+      },
+      required: ['files'],
+    },
+  })
+  @ApiOkResponse({ type: CampaignResponse })
+  @UseInterceptors(
+    FilesInterceptor('files', CAMPAIGN_MAX_IMAGES, {
+      storage: memoryStorage(),
+      limits: { fileSize: UPLOAD_MAX_BYTES },
+    }),
+  )
+  addImages(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @UploadedFiles() files: Express.Multer.File[],
+  ) {
+    return this.campaigns.addImages(user, id, files);
+  }
+
+  @Delete(':id/images/:imageId')
+  @ApiOperation({ summary: 'Delete a campaign image (brand owner)' })
+  @ApiOkResponse({ type: CampaignResponse })
+  removeImage(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Param('imageId') imageId: string,
+  ) {
+    return this.campaigns.removeImage(user, id, imageId);
   }
 }

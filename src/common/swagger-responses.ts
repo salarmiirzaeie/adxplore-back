@@ -31,6 +31,12 @@ export class AuthUserResponse {
   @ApiProperty({ enum: UserRole, example: UserRole.INFLUENCER })
   role!: UserRole;
 
+  @ApiPropertyOptional({
+    nullable: true,
+    example: 'http://localhost:3000/uploads/avatars/abc.jpg',
+  })
+  photoUrl!: string | null;
+
   @ApiPropertyOptional({ enum: BrandCategory, nullable: true })
   category!: BrandCategory | null;
 
@@ -79,6 +85,12 @@ export class UserProfileResponse {
 
   @ApiProperty({ enum: UserRole, example: UserRole.INFLUENCER })
   role!: UserRole;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    example: 'http://localhost:3000/uploads/avatars/abc.jpg',
+  })
+  photoUrl!: string | null;
 
   @ApiPropertyOptional({ enum: BrandCategory, nullable: true })
   category!: BrandCategory | null;

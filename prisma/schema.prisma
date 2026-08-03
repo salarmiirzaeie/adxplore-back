@@ -72,6 +72,7 @@ model User {
   phone         String          @unique
   name          String?
   role          UserRole        @default(INFLUENCER)
+  photoUrl      String?
   category      BrandCategory?
   city          String?
   website       String?
@@ -98,9 +99,21 @@ model Campaign {
   status      CampaignStatus  @default(DRAFT)
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
+  images      CampaignImage[]
 
   @@index([brandId, status])
   @@index([status, category, city])
+}
+
+model CampaignImage {
+  id         String   @id @default(cuid())
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  url        String
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  @@index([campaignId, sortOrder])
 }
 
 model Otp {

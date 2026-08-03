@@ -98,6 +98,19 @@ Require `Authorization: Bearer <accessToken>` and `role = BRAND`.
 
 Status: `DRAFT` | `OPEN` | `CLOSED`. Deliverable: `STORY` | `POST` | `REEL`.
 
+## Influencers
+
+Require `Authorization: Bearer <accessToken>` and `role = BRAND`.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/v1/influencers` | Browse complete influencer profiles |
+| `GET` | `/v1/influencers/:id` | Public influencer card |
+
+Query params (optional): `category`, `city`, `followerRange`.
+
+Phone is never exposed in these responses.
+
 ## Health
 
 `GET /v1/health`

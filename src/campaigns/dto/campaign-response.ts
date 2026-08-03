@@ -5,6 +5,17 @@ import {
   DeliverableType,
 } from '../../generated/prisma/client';
 
+export class CampaignImageResponse {
+  @ApiProperty()
+  id!: string;
+
+  @ApiProperty()
+  url!: string;
+
+  @ApiProperty()
+  sortOrder!: number;
+}
+
 export class CampaignResponse {
   @ApiProperty()
   id!: string;
@@ -35,6 +46,9 @@ export class CampaignResponse {
 
   @ApiProperty({ enum: CampaignStatus })
   status!: CampaignStatus;
+
+  @ApiProperty({ type: CampaignImageResponse, isArray: true })
+  images!: CampaignImageResponse[];
 
   @ApiProperty()
   createdAt!: Date;

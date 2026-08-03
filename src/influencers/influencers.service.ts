@@ -1,0 +1,92 @@
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  UserRole,
+  type Prisma,
+  type User,
+} from '../generated/prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
+import { ListInfluencersQueryDto } from './dto/list-influencers-query.dto';
+
+@Injectable()
+export class InfluencersService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  private assertBrand(user: User) {
+    if (user.role !== UserRole.BRAND) {
+      throw new ForbiddenException('فقط برندها می‌توانند اینفلوئنسرها را ببینند');
+    }
+  }
+
+  toCard(user: User) {
+    return {
+      id: user.id,
+      name: user.name!,
+      website: user.website!,
+      photoUrl: user.photoUrl,
+      category: user.category!,
+      city: user.city!,
+      followerRange: user.followerRange!,
+    };
+  }
+
+  private isComplete(user: User) {
+    return Boolean(
+      user.role === UserRole.INFLUENCER &&
+        user.name?.trim() &&
+        user.website?.trim() &&
+        user.city?.trim() &&
+        user.category &&
+        user.followerRange,
+    );
+  }
+
+  async list(viewer: User, query: ListInfluencersQueryDto) {
+    this.assertBrand(viewer);
+
+    const where: Prisma.UserWhereInput = {
+      role: UserRole.INFLUENCER,
+      name: { not: null },
+      website: { not: null },
+      category: { not: null },
+      city: { not: null },
+      followerRange: { not: null },
+      ...(query.category ? { category: query.category } : {}),
+      ...(query.city ? { city: query.city } : {}),
+      ...(query.followerRange ? { followerRange: query.followerRange } : {}),
+    };
+
+    const influencers = await this.prisma.user.findMany({
+      where,
+      orderBy: { updatedAt: 'desc' },
+      take: 100,
+    });
+
+    return influencers.filter((u) => this.isComplete(u)).map((u) => this.toCard(u));
+  }
+
+  async getOne(viewer: User, id: string) {
+    this.assertBrand(viewer);
+
+    const influencer = await this.prisma.user.findFirst({
+      where: {
+        id,
+        role: UserRole.INFLUENCER,
+        name: { not: null },
+        website: { not: null },
+        category: { not: null },
+        city: { not: null },
+        followerRange: { not: null },
+      },
+    });
+
+    if (!influencer || !this.isComplete(influencer)) {
+      throw new NotFoundException('اینفلوئنسر پیدا نشد');
+    }
+
+    return this.toCard(influencer);
+  }
+}

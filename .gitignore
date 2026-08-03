@@ -47,5 +47,8 @@ lerna-debug.log*
 prisma/*.db
 prisma/*.db-journal
 
+# Uploaded media
+/uploads
+
 # Misc
 *.tsbuildinfo

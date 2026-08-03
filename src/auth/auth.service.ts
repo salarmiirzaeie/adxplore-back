@@ -132,6 +132,7 @@ export class AuthService {
         goal: user.goal,
         businessSize: user.businessSize,
         followerRange: user.followerRange,
+        photoUrl: user.photoUrl,
       },
     };
   }
