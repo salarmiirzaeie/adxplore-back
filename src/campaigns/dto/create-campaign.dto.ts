@@ -1,5 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  ArrayMinSize,
+  IsArray,
   IsEnum,
   IsInt,
   IsOptional,
@@ -32,9 +34,21 @@ export class CreateCampaignDto {
   @MaxLength(2000)
   brief!: string;
 
-  @ApiProperty({ enum: BrandCategory, example: BrandCategory.BEAUTY })
+  @ApiProperty({
+    enum: BrandCategory,
+    isArray: true,
+    example: [BrandCategory.BEAUTY, BrandCategory.FASHION],
+  })
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsEnum(BrandCategory, { each: true })
+  categories!: BrandCategory[];
+
+  /** @deprecated Prefer categories */
+  @ApiPropertyOptional({ enum: BrandCategory, example: BrandCategory.BEAUTY })
+  @IsOptional()
   @IsEnum(BrandCategory)
-  category!: BrandCategory;
+  category?: BrandCategory;
 
   @ApiProperty({ example: 'تهران', maxLength: 80 })
   @IsString()

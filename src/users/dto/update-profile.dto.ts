@@ -1,5 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  ArrayMinSize,
+  IsArray,
   IsEnum,
   IsOptional,
   IsString,
@@ -22,6 +24,18 @@ export class UpdateProfileDto {
   @MaxLength(80)
   name?: string;
 
+  @ApiPropertyOptional({
+    enum: BrandCategory,
+    isArray: true,
+    example: [BrandCategory.BEAUTY, BrandCategory.FASHION],
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsEnum(BrandCategory, { each: true })
+  categories?: BrandCategory[];
+
+  /** @deprecated Prefer categories; kept for older clients */
   @ApiPropertyOptional({ enum: BrandCategory, example: BrandCategory.BEAUTY })
   @IsOptional()
   @IsEnum(BrandCategory)

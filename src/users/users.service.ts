@@ -4,6 +4,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { UserRole, type User } from '../generated/prisma/client';
+import {
+  normalizeCategories,
+  parseCategories,
+  primaryCategory,
+} from '../common/categories';
 import { PrismaService } from '../prisma/prisma.service';
 import { UploadsService } from '../uploads/uploads.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
@@ -16,13 +21,15 @@ export class UsersService {
   ) {}
 
   toPublic(user: User) {
+    const categories = parseCategories(user.categories, user.category);
     return {
       id: user.id,
       phone: user.phone,
       name: user.name,
       role: user.role,
       photoUrl: user.photoUrl,
-      category: user.category,
+      category: primaryCategory(categories) ?? user.category,
+      categories,
       city: user.city,
       website: user.website,
       goal: user.goal,
@@ -47,15 +54,25 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
+    const existingCategories = parseCategories(
+      existing.categories,
+      existing.category,
+    );
+    const nextCategories =
+      dto.categories !== undefined
+        ? normalizeCategories(dto.categories)
+        : dto.category !== undefined
+          ? normalizeCategories([dto.category])
+          : existingCategories;
+    const nextPrimary = primaryCategory(nextCategories);
+
     if (existing.role === UserRole.BRAND) {
       const nextName =
         dto.name !== undefined ? dto.name.trim() : existing.name;
-      const nextCategory =
-        dto.category !== undefined ? dto.category : existing.category;
       const nextCity =
         dto.city !== undefined ? dto.city.trim() : existing.city;
 
-      if (!nextName?.trim() || !nextCategory || !nextCity?.trim()) {
+      if (!nextName?.trim() || !nextPrimary || !nextCity?.trim()) {
         throw new BadRequestException(
           'پروفایل برند باید شامل نام، دسته و شهر باشد',
         );
@@ -65,8 +82,6 @@ export class UsersService {
     if (existing.role === UserRole.INFLUENCER) {
       const nextName =
         dto.name !== undefined ? dto.name.trim() : existing.name;
-      const nextCategory =
-        dto.category !== undefined ? dto.category : existing.category;
       const nextCity =
         dto.city !== undefined ? dto.city.trim() : existing.city;
       const nextWebsite =
@@ -82,7 +97,7 @@ export class UsersService {
 
       if (
         !nextName?.trim() ||
-        !nextCategory ||
+        !nextPrimary ||
         !nextCity?.trim() ||
         !nextWebsite?.trim() ||
         !nextFollowerRange
@@ -93,11 +108,16 @@ export class UsersService {
       }
     }
 
+    const categoriesChanged =
+      dto.categories !== undefined || dto.category !== undefined;
+
     const user = await this.prisma.user.update({
       where: { id },
       data: {
         ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
-        ...(dto.category !== undefined ? { category: dto.category } : {}),
+        ...(categoriesChanged
+          ? { category: nextPrimary, categories: nextCategories }
+          : {}),
         ...(dto.city !== undefined ? { city: dto.city.trim() } : {}),
         ...(dto.website !== undefined
           ? {

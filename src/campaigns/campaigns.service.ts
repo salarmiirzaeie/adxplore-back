@@ -6,16 +6,24 @@ import {
 } from '@nestjs/common';
 import {
   CampaignStatus,
+  InvitationStatus,
   UserRole,
   type Campaign,
   type CampaignImage,
+  type Prisma,
   type User,
 } from '../generated/prisma/client';
+import {
+  normalizeCategories,
+  parseCategories,
+  primaryCategory,
+} from '../common/categories';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   CAMPAIGN_MAX_IMAGES,
   UploadsService,
 } from '../uploads/uploads.service';
+import { BrowseCampaignsQueryDto } from './dto/browse-campaigns-query.dto';
 import { CreateCampaignDto } from './dto/create-campaign.dto';
 import { UpdateCampaignDto } from './dto/update-campaign.dto';
 
@@ -29,12 +37,14 @@ export class CampaignsService {
   ) {}
 
   toPublic(campaign: CampaignWithImages) {
+    const categories = parseCategories(campaign.categories, campaign.category);
     return {
       id: campaign.id,
       brandId: campaign.brandId,
       title: campaign.title,
       brief: campaign.brief,
-      category: campaign.category,
+      category: primaryCategory(categories) ?? campaign.category,
+      categories,
       city: campaign.city,
       deliverable: campaign.deliverable,
       budgetMin: campaign.budgetMin,
@@ -65,6 +75,23 @@ export class CampaignsService {
     }
   }
 
+  private resolveCategories(dto: {
+    categories?: CreateCampaignDto['categories'];
+    category?: CreateCampaignDto['category'];
+  }) {
+    const list =
+      dto.categories !== undefined
+        ? normalizeCategories(dto.categories)
+        : dto.category
+          ? normalizeCategories([dto.category])
+          : [];
+    const primary = primaryCategory(list);
+    if (!primary) {
+      throw new BadRequestException('حداقل یک دسته انتخاب کنید');
+    }
+    return { categories: list, category: primary };
+  }
+
   private async getOwned(user: User, id: string) {
     this.assertBrand(user);
     const campaign = await this.prisma.campaign.findUnique({
@@ -80,6 +107,7 @@ export class CampaignsService {
   async create(user: User, dto: CreateCampaignDto) {
     this.assertBrand(user);
     this.assertBudget(dto.budgetMin, dto.budgetMax);
+    const { categories, category } = this.resolveCategories(dto);
 
     const status = dto.status ?? CampaignStatus.DRAFT;
     if (status === CampaignStatus.CLOSED) {
@@ -91,7 +119,8 @@ export class CampaignsService {
         brandId: user.id,
         title: dto.title.trim(),
         brief: dto.brief.trim(),
-        category: dto.category,
+        category,
+        categories,
         city: dto.city.trim(),
         deliverable: dto.deliverable,
         budgetMin: dto.budgetMin ?? null,
@@ -114,6 +143,96 @@ export class CampaignsService {
     });
 
     return campaigns.map((c) => this.toPublic(c));
+  }
+
+  async browseOpen(user: User, query: BrowseCampaignsQueryDto) {
+    if (user.role !== UserRole.INFLUENCER) {
+      throw new ForbiddenException('فقط اینفلوئنسرها می‌توانند کمپین‌ها را مرور کنند');
+    }
+
+    const where: Prisma.CampaignWhereInput = {
+      status: CampaignStatus.OPEN,
+    };
+
+    if (query.category) {
+      where.category = query.category;
+    }
+
+    if (query.city?.trim()) {
+      where.city = { contains: query.city.trim() };
+    }
+
+    if (query.q?.trim()) {
+      const q = query.q.trim();
+      where.OR = [{ title: { contains: q } }, { brief: { contains: q } }];
+    }
+
+    if (query.invited) {
+      where.invitations = {
+        some: {
+          influencerId: user.id,
+          status: InvitationStatus.PENDING,
+        },
+      };
+    }
+
+    if (query.forMe) {
+      // City match from profile when no explicit city filter was set
+      if (user.city?.trim() && !query.city?.trim()) {
+        where.city = { contains: user.city.trim() };
+      }
+    }
+
+    const campaigns = await this.prisma.campaign.findMany({
+      where,
+      include: { images: { orderBy: { sortOrder: 'asc' } } },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+
+    if (!query.forMe) {
+      return campaigns.map((c) => this.toPublic(c));
+    }
+
+    const myCategories = new Set(
+      parseCategories(user.categories, user.category),
+    );
+    if (!myCategories.size) {
+      return campaigns.map((c) => this.toPublic(c));
+    }
+
+    return campaigns
+      .filter((c) => {
+        const campaignCategories = parseCategories(c.categories, c.category);
+        return campaignCategories.some((cat) => myCategories.has(cat));
+      })
+      .map((c) => this.toPublic(c));
+  }
+
+  async getOne(user: User, id: string) {
+    const campaign = await this.prisma.campaign.findUnique({
+      where: { id },
+      include: { images: { orderBy: { sortOrder: 'asc' } } },
+    });
+    if (!campaign) {
+      throw new NotFoundException('کمپین پیدا نشد');
+    }
+
+    if (user.role === UserRole.BRAND) {
+      if (campaign.brandId !== user.id) {
+        throw new NotFoundException('کمپین پیدا نشد');
+      }
+      return this.toPublic(campaign);
+    }
+
+    if (user.role === UserRole.INFLUENCER) {
+      if (campaign.status !== CampaignStatus.OPEN) {
+        throw new NotFoundException('کمپین پیدا نشد');
+      }
+      return this.toPublic(campaign);
+    }
+
+    throw new ForbiddenException('دسترسی مجاز نیست');
   }
 
   async getMine(user: User, id: string) {

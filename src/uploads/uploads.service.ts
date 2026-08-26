@@ -24,7 +24,7 @@ export class UploadsService {
     if (!existsSync(this.rootDir)) {
       mkdirSync(this.rootDir, { recursive: true });
     }
-    for (const sub of ['avatars', 'campaigns']) {
+    for (const sub of ['avatars', 'campaigns', 'deals'] as const) {
       const dir = join(this.rootDir, sub);
       if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
     }
@@ -63,7 +63,7 @@ export class UploadsService {
   }
 
   saveImage(
-    folder: 'avatars' | 'campaigns',
+    folder: 'avatars' | 'campaigns' | 'deals',
     file: Express.Multer.File,
   ): string {
     this.assertImageFile(file);

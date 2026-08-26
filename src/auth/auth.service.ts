@@ -11,6 +11,10 @@ import { UserRole } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { SmsService } from '../sms/sms.service';
 import { generateOtpCode, normalizeIranPhone } from '../common/phone.util';
+import {
+  parseCategories,
+  primaryCategory,
+} from '../common/categories';
 import { JwtPayload } from './jwt-payload';
 
 @Injectable()
@@ -126,7 +130,11 @@ export class AuthService {
         phone: user.phone,
         name: user.name,
         role: user.role,
-        category: user.category,
+        category:
+          primaryCategory(
+            parseCategories(user.categories, user.category),
+          ) ?? user.category,
+        categories: parseCategories(user.categories, user.category),
         city: user.city,
         website: user.website,
         goal: user.goal,

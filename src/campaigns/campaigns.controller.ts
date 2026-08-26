@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UploadedFiles,
   UseGuards,
   UseInterceptors,
@@ -29,6 +30,7 @@ import {
   UPLOAD_MAX_BYTES,
 } from '../uploads/uploads.service';
 import { CampaignsService } from './campaigns.service';
+import { BrowseCampaignsQueryDto } from './dto/browse-campaigns-query.dto';
 import { CampaignResponse } from './dto/campaign-response';
 import { CreateCampaignDto } from './dto/create-campaign.dto';
 import { UpdateCampaignDto } from './dto/update-campaign.dto';
@@ -54,11 +56,27 @@ export class CampaignsController {
     return this.campaigns.listMine(user);
   }
 
+  @Get('browse')
+  @ApiOperation({
+    summary:
+      'Browse OPEN campaigns (influencer). Filters: category, city, q, forMe, invited',
+  })
+  @ApiOkResponse({ type: CampaignResponse, isArray: true })
+  browse(
+    @CurrentUser() user: User,
+    @Query() query: BrowseCampaignsQueryDto,
+  ) {
+    return this.campaigns.browseOpen(user, query);
+  }
+
   @Get(':id')
-  @ApiOperation({ summary: 'Get a campaign I own (brand only)' })
+  @ApiOperation({
+    summary:
+      'Get campaign (brand owner, or influencer if OPEN marketplace campaign)',
+  })
   @ApiOkResponse({ type: CampaignResponse })
   getOne(@CurrentUser() user: User, @Param('id') id: string) {
-    return this.campaigns.getMine(user, id);
+    return this.campaigns.getOne(user, id);
   }
 
   @Patch(':id')

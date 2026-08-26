@@ -67,22 +67,75 @@ enum DeliverableType {
   REEL
 }
 
+enum InvitationStatus {
+  PENDING
+  CANCELLED
+}
+
+enum OfferStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
+}
+
+enum DealStatus {
+  IN_PROGRESS
+  DELIVERED
+  REVISION_REQUESTED
+  COMPLETED
+  CANCELLED
+}
+
+enum MessageKind {
+  TEXT
+  SYSTEM
+  DELIVERABLE
+}
+
+enum NotificationType {
+  INVITATION_RECEIVED
+  OFFER_RECEIVED
+  OFFER_ACCEPTED
+  OFFER_REJECTED
+  OFFER_CANCELLED
+  DEAL_STARTED
+  DELIVERABLE_SUBMITTED
+  REVISION_REQUESTED
+  DEAL_COMPLETED
+  DEAL_CANCELLED
+  CHAT_MESSAGE
+}
+
 model User {
-  id            String          @id @default(cuid())
-  phone         String          @unique
-  name          String?
-  role          UserRole        @default(INFLUENCER)
-  photoUrl      String?
-  category      BrandCategory?
-  city          String?
-  website       String?
-  goal          BrandGoal?
-  businessSize  BusinessSize?
-  followerRange FollowerRange?
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
-  otps          Otp[]
-  campaigns     Campaign[]
+  id                   String         @id @default(cuid())
+  phone                String         @unique
+  name                 String?
+  role                 UserRole       @default(INFLUENCER)
+  photoUrl             String?
+  /// Primary category (first of categories) — used for simple filters
+  category             BrandCategory?
+  /// JSON array of BrandCategory values
+  categories           Json           @default("[]")
+  city                 String?
+  website              String?
+  goal                 BrandGoal?
+  businessSize         BusinessSize?
+  followerRange        FollowerRange?
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+  otps                 Otp[]
+  campaigns            Campaign[]
+  invitationsSent      Invitation[]   @relation("InvitationBrand")
+  invitationsReceived  Invitation[]   @relation("InvitationInfluencer")
+  offersAsBrand        Offer[]        @relation("OfferBrand")
+  offersAsInfluencer   Offer[]        @relation("OfferInfluencer")
+  dealsAsBrand         Deal[]         @relation("DealBrand")
+  dealsAsInfluencer    Deal[]         @relation("DealInfluencer")
+  notifications        Notification[]
+  conversationsAsBrand       Conversation[] @relation("ConversationBrand")
+  conversationsAsInfluencer  Conversation[] @relation("ConversationInfluencer")
+  messagesSent               Message[]
 }
 
 model Campaign {
@@ -91,7 +144,10 @@ model Campaign {
   brand       User            @relation(fields: [brandId], references: [id], onDelete: Cascade)
   title       String
   brief       String
+  /// Primary category (first of categories) — used for indexes/filters
   category    BrandCategory
+  /// JSON array of BrandCategory values
+  categories  Json            @default("[]")
   city        String
   deliverable DeliverableType
   budgetMin   Int?
@@ -100,6 +156,9 @@ model Campaign {
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
   images      CampaignImage[]
+  invitations Invitation[]
+  offers      Offer[]
+  deals       Deal[]
 
   @@index([brandId, status])
   @@index([status, category, city])
@@ -114,6 +173,123 @@ model CampaignImage {
   createdAt  DateTime @default(now())
 
   @@index([campaignId, sortOrder])
+}
+
+model Invitation {
+  id           String           @id @default(cuid())
+  campaignId   String
+  campaign     Campaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  brandId      String
+  brand        User             @relation("InvitationBrand", fields: [brandId], references: [id], onDelete: Cascade)
+  influencerId String
+  influencer   User             @relation("InvitationInfluencer", fields: [influencerId], references: [id], onDelete: Cascade)
+  message      String?
+  status       InvitationStatus @default(PENDING)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@unique([campaignId, influencerId])
+  @@index([brandId, status])
+  @@index([influencerId, status])
+  @@index([campaignId, status])
+}
+
+model Offer {
+  id           String         @id @default(cuid())
+  campaignId   String
+  campaign     Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  brandId      String
+  brand        User           @relation("OfferBrand", fields: [brandId], references: [id], onDelete: Cascade)
+  influencerId String
+  influencer   User           @relation("OfferInfluencer", fields: [influencerId], references: [id], onDelete: Cascade)
+  fee          Int
+  message      String?
+  deadline     DateTime?
+  status       OfferStatus    @default(PENDING)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  deal         Deal?
+  conversation Conversation?
+
+  @@index([brandId, status])
+  @@index([influencerId, status])
+  @@index([campaignId, status])
+}
+
+/// 1:1 chat thread between brand & influencer for an offer
+model Conversation {
+  id           String    @id @default(cuid())
+  offerId      String    @unique
+  offer        Offer     @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  campaignId   String
+  brandId      String
+  brand        User      @relation("ConversationBrand", fields: [brandId], references: [id], onDelete: Cascade)
+  influencerId String
+  influencer   User      @relation("ConversationInfluencer", fields: [influencerId], references: [id], onDelete: Cascade)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  messages     Message[]
+
+  @@index([brandId, updatedAt])
+  @@index([influencerId, updatedAt])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  kind           MessageKind  @default(TEXT)
+  body           String
+  /// Structured payload for SYSTEM / DELIVERABLE cards
+  metadata       Json?
+  createdAt      DateTime     @default(now())
+  readAt         DateTime?
+
+  @@index([conversationId, createdAt])
+  @@index([senderId])
+}
+
+model Deal {
+  id            String     @id @default(cuid())
+  offerId       String     @unique
+  offer         Offer      @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  campaignId    String
+  campaign      Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  brandId       String
+  brand         User       @relation("DealBrand", fields: [brandId], references: [id], onDelete: Cascade)
+  influencerId  String
+  influencer    User       @relation("DealInfluencer", fields: [influencerId], references: [id], onDelete: Cascade)
+  fee           Int
+  status        DealStatus @default(IN_PROGRESS)
+  contentUrl    String?
+  note          String?
+  proofUrl      String?
+  brandFeedback String?
+  submittedAt   DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@index([brandId, status])
+  @@index([influencerId, status])
+  @@index([campaignId, status])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  body      String
+  linkPath  String?
+  entityId  String?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  @@index([userId, readAt, createdAt])
 }
 
 model Otp {

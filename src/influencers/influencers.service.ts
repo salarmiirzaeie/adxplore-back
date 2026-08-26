@@ -8,6 +8,10 @@ import {
   type Prisma,
   type User,
 } from '../generated/prisma/client';
+import {
+  parseCategories,
+  primaryCategory,
+} from '../common/categories';
 import { PrismaService } from '../prisma/prisma.service';
 import { ListInfluencersQueryDto } from './dto/list-influencers-query.dto';
 
@@ -22,24 +26,27 @@ export class InfluencersService {
   }
 
   toCard(user: User) {
+    const categories = parseCategories(user.categories, user.category);
     return {
       id: user.id,
       name: user.name!,
       website: user.website!,
       photoUrl: user.photoUrl,
-      category: user.category!,
+      category: primaryCategory(categories) ?? user.category!,
+      categories,
       city: user.city!,
       followerRange: user.followerRange!,
     };
   }
 
   private isComplete(user: User) {
+    const categories = parseCategories(user.categories, user.category);
     return Boolean(
       user.role === UserRole.INFLUENCER &&
         user.name?.trim() &&
         user.website?.trim() &&
         user.city?.trim() &&
-        user.category &&
+        categories.length &&
         user.followerRange,
     );
   }
@@ -51,7 +58,6 @@ export class InfluencersService {
       role: UserRole.INFLUENCER,
       name: { not: null },
       website: { not: null },
-      category: { not: null },
       city: { not: null },
       followerRange: { not: null },
       ...(query.category ? { category: query.category } : {}),
@@ -77,7 +83,6 @@ export class InfluencersService {
         role: UserRole.INFLUENCER,
         name: { not: null },
         website: { not: null },
-        category: { not: null },
         city: { not: null },
         followerRange: { not: null },
       },

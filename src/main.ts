@@ -51,6 +51,11 @@ async function bootstrap() {
     .addTag('users')
     .addTag('campaigns')
     .addTag('influencers')
+    .addTag('invitations')
+    .addTag('offers')
+    .addTag('deals')
+    .addTag('chat')
+    .addTag('notifications')
     .build();
 
   const document = SwaggerModule.createDocument(app, swaggerConfig);
