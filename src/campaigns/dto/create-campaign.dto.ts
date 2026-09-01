@@ -50,15 +50,40 @@ export class CreateCampaignDto {
   @IsEnum(BrandCategory)
   category?: BrandCategory;
 
-  @ApiProperty({ example: 'تهران', maxLength: 80 })
+  @ApiProperty({ example: 'کرج', maxLength: 80, description: 'City name, or کل ایران for nationwide' })
   @IsString()
   @MinLength(2)
   @MaxLength(80)
   city!: string;
 
-  @ApiProperty({ enum: DeliverableType, example: DeliverableType.REEL })
+  @ApiPropertyOptional({
+    example: 'البرز',
+    maxLength: 80,
+    nullable: true,
+    description: 'Required unless city is کل ایران',
+  })
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null && value !== undefined)
+  @IsString()
+  @MaxLength(80)
+  province?: string | null;
+
+  @ApiProperty({
+    enum: DeliverableType,
+    isArray: true,
+    example: [DeliverableType.REEL, DeliverableType.STORY],
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsEnum(DeliverableType, { each: true })
+  deliverables?: DeliverableType[];
+
+  /** @deprecated Prefer deliverables */
+  @ApiPropertyOptional({ enum: DeliverableType, example: DeliverableType.REEL })
+  @IsOptional()
   @IsEnum(DeliverableType)
-  deliverable!: DeliverableType;
+  deliverable?: DeliverableType;
 
   @ApiPropertyOptional({ example: 5_000_000, description: 'Budget min in toman' })
   @IsOptional()

@@ -18,6 +18,12 @@ import {
   parseCategories,
   primaryCategory,
 } from '../common/categories';
+import { campaignLocationWhere, resolveCampaignLocation } from '../common/cities';
+import {
+  normalizeDeliverables,
+  parseDeliverables,
+  primaryDeliverable,
+} from '../common/deliverables';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   CAMPAIGN_MAX_IMAGES,
@@ -38,6 +44,10 @@ export class CampaignsService {
 
   toPublic(campaign: CampaignWithImages) {
     const categories = parseCategories(campaign.categories, campaign.category);
+    const deliverables = parseDeliverables(
+      campaign.deliverables,
+      campaign.deliverable,
+    );
     return {
       id: campaign.id,
       brandId: campaign.brandId,
@@ -46,7 +56,9 @@ export class CampaignsService {
       category: primaryCategory(categories) ?? campaign.category,
       categories,
       city: campaign.city,
-      deliverable: campaign.deliverable,
+      province: campaign.province,
+      deliverable: primaryDeliverable(deliverables) ?? campaign.deliverable,
+      deliverables,
       budgetMin: campaign.budgetMin,
       budgetMax: campaign.budgetMax,
       status: campaign.status,
@@ -92,6 +104,23 @@ export class CampaignsService {
     return { categories: list, category: primary };
   }
 
+  private resolveDeliverables(dto: {
+    deliverables?: CreateCampaignDto['deliverables'];
+    deliverable?: CreateCampaignDto['deliverable'];
+  }) {
+    const list =
+      dto.deliverables !== undefined
+        ? normalizeDeliverables(dto.deliverables)
+        : dto.deliverable
+          ? normalizeDeliverables([dto.deliverable])
+          : [];
+    const primary = primaryDeliverable(list);
+    if (!primary) {
+      throw new BadRequestException('حداقل یک نوع محتوا انتخاب کنید');
+    }
+    return { deliverables: list, deliverable: primary };
+  }
+
   private async getOwned(user: User, id: string) {
     this.assertBrand(user);
     const campaign = await this.prisma.campaign.findUnique({
@@ -108,11 +137,14 @@ export class CampaignsService {
     this.assertBrand(user);
     this.assertBudget(dto.budgetMin, dto.budgetMax);
     const { categories, category } = this.resolveCategories(dto);
+    const { deliverables, deliverable } = this.resolveDeliverables(dto);
 
     const status = dto.status ?? CampaignStatus.DRAFT;
     if (status === CampaignStatus.CLOSED) {
       throw new BadRequestException('نمی‌توان کمپین را در وضعیت بسته ایجاد کرد');
     }
+
+    const location = resolveCampaignLocation(dto.city, dto.province);
 
     const campaign = await this.prisma.campaign.create({
       data: {
@@ -121,8 +153,10 @@ export class CampaignsService {
         brief: dto.brief.trim(),
         category,
         categories,
-        city: dto.city.trim(),
-        deliverable: dto.deliverable,
+        city: location.city,
+        province: location.province,
+        deliverable,
+        deliverables,
         budgetMin: dto.budgetMin ?? null,
         budgetMax: dto.budgetMax ?? null,
         status,
@@ -153,18 +187,31 @@ export class CampaignsService {
     const where: Prisma.CampaignWhereInput = {
       status: CampaignStatus.OPEN,
     };
+    const and: Prisma.CampaignWhereInput[] = [];
 
     if (query.category) {
       where.category = query.category;
     }
 
-    if (query.city?.trim()) {
-      where.city = { contains: query.city.trim() };
+    const cityWhere =
+      query.city?.trim() || query.province?.trim()
+        ? campaignLocationWhere({
+            city: query.city,
+            province: query.province,
+          })
+        : query.forMe
+          ? campaignLocationWhere({
+              city: user.city,
+              province: user.province,
+            })
+          : undefined;
+    if (cityWhere) {
+      and.push(cityWhere);
     }
 
     if (query.q?.trim()) {
       const q = query.q.trim();
-      where.OR = [{ title: { contains: q } }, { brief: { contains: q } }];
+      and.push({ OR: [{ title: { contains: q } }, { brief: { contains: q } }] });
     }
 
     if (query.invited) {
@@ -176,11 +223,8 @@ export class CampaignsService {
       };
     }
 
-    if (query.forMe) {
-      // City match from profile when no explicit city filter was set
-      if (user.city?.trim() && !query.city?.trim()) {
-        where.city = { contains: user.city.trim() };
-      }
+    if (and.length) {
+      where.AND = and;
     }
 
     const campaigns = await this.prisma.campaign.findMany({
@@ -249,15 +293,53 @@ export class CampaignsService {
       dto.budgetMax !== undefined ? dto.budgetMax : existing.budgetMax;
     this.assertBudget(nextMin, nextMax);
 
+    const categoryUpdate =
+      dto.categories !== undefined || dto.category !== undefined
+        ? this.resolveCategories({
+            categories:
+              dto.categories ??
+              parseCategories(existing.categories, existing.category),
+            category: dto.category,
+          })
+        : null;
+
+    const deliverableUpdate =
+      dto.deliverables !== undefined || dto.deliverable !== undefined
+        ? this.resolveDeliverables({
+            deliverables:
+              dto.deliverables ??
+              parseDeliverables(existing.deliverables, existing.deliverable),
+            deliverable: dto.deliverable,
+          })
+        : null;
+
+    const locationUpdate =
+      dto.city !== undefined || dto.province !== undefined
+        ? resolveCampaignLocation(
+            dto.city !== undefined ? dto.city : existing.city,
+            dto.province !== undefined ? dto.province : existing.province,
+          )
+        : null;
+
     const campaign = await this.prisma.campaign.update({
       where: { id },
       data: {
         ...(dto.title !== undefined ? { title: dto.title.trim() } : {}),
         ...(dto.brief !== undefined ? { brief: dto.brief.trim() } : {}),
-        ...(dto.category !== undefined ? { category: dto.category } : {}),
-        ...(dto.city !== undefined ? { city: dto.city.trim() } : {}),
-        ...(dto.deliverable !== undefined
-          ? { deliverable: dto.deliverable }
+        ...(categoryUpdate
+          ? {
+              category: categoryUpdate.category,
+              categories: categoryUpdate.categories,
+            }
+          : {}),
+        ...(locationUpdate
+          ? { city: locationUpdate.city, province: locationUpdate.province }
+          : {}),
+        ...(deliverableUpdate
+          ? {
+              deliverable: deliverableUpdate.deliverable,
+              deliverables: deliverableUpdate.deliverables,
+            }
           : {}),
         ...(dto.budgetMin !== undefined ? { budgetMin: dto.budgetMin } : {}),
         ...(dto.budgetMax !== undefined ? { budgetMax: dto.budgetMax } : {}),

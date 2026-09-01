@@ -26,6 +26,9 @@ export class OfferPartyResponse {
   @ApiPropertyOptional({ nullable: true })
   city!: string | null;
 
+  @ApiPropertyOptional({ nullable: true })
+  province!: string | null;
+
   @ApiPropertyOptional({ enum: FollowerRange, nullable: true })
   followerRange!: FollowerRange | null;
 }
@@ -40,11 +43,17 @@ export class OfferCampaignResponse {
   @ApiProperty({ enum: DeliverableType })
   deliverable!: DeliverableType;
 
+  @ApiProperty({ enum: DeliverableType, isArray: true })
+  deliverables!: DeliverableType[];
+
   @ApiProperty({ enum: BrandCategory, isArray: true })
   categories!: BrandCategory[];
 
   @ApiProperty()
   city!: string;
+
+  @ApiPropertyOptional({ nullable: true })
+  province!: string | null;
 
   @ApiProperty({ enum: CampaignStatus })
   status!: CampaignStatus;

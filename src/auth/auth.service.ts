@@ -7,7 +7,8 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { UserRole } from '../generated/prisma/client';
+import * as bcrypt from 'bcryptjs';
+import { UserRole, type User } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { SmsService } from '../sms/sms.service';
 import { generateOtpCode, normalizeIranPhone } from '../common/phone.util';
@@ -72,6 +73,12 @@ export class AuthService {
   }
 
   async verifyOtp(rawPhone: string, code: string, role: UserRole) {
+    if (role === UserRole.ADMIN) {
+      throw new ForbiddenException(
+        'ورود ادمین فقط با رمز عبور از پنل ادمین مجاز است.',
+      );
+    }
+
     const phone = normalizeIranPhone(rawPhone);
 
     const otp = await this.prisma.otp.findFirst({
@@ -101,6 +108,11 @@ export class AuthService {
         data: { phone, role },
       });
     } else if (user.role !== role) {
+      if (user.role === UserRole.ADMIN) {
+        throw new ForbiddenException(
+          'این شماره ادمین است. از پنل ادمین وارد شوید.',
+        );
+      }
       throw new ForbiddenException(
         user.role === UserRole.BRAND
           ? 'این شماره با نقش برند ثبت شده است. لطفاً به‌عنوان برند وارد شوید.'
@@ -113,6 +125,27 @@ export class AuthService {
       data: { userId: user.id },
     });
 
+    return this.issueToken(user, isNewUser);
+  }
+
+  /** Admin panel: phone + password (no OTP). */
+  async adminLogin(rawPhone: string, password: string) {
+    const phone = normalizeIranPhone(rawPhone);
+    const user = await this.prisma.user.findUnique({ where: { phone } });
+
+    if (!user || user.role !== UserRole.ADMIN || !user.passwordHash) {
+      throw new UnauthorizedException('شماره یا رمز عبور نادرست است');
+    }
+
+    const match = await bcrypt.compare(password, user.passwordHash);
+    if (!match) {
+      throw new UnauthorizedException('شماره یا رمز عبور نادرست است');
+    }
+
+    return this.issueToken(user, false);
+  }
+
+  private async issueToken(user: User, isNewUser: boolean) {
     const payload: JwtPayload = {
       sub: user.id,
       phone: user.phone,
@@ -136,6 +169,7 @@ export class AuthService {
           ) ?? user.category,
         categories: parseCategories(user.categories, user.category),
         city: user.city,
+        province: user.province,
         website: user.website,
         goal: user.goal,
         businessSize: user.businessSize,

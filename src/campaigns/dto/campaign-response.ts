@@ -32,11 +32,20 @@ export class CampaignResponse {
   @ApiProperty({ enum: BrandCategory })
   category!: BrandCategory;
 
-  @ApiProperty({ example: 'تهران' })
+  @ApiProperty({ enum: BrandCategory, isArray: true })
+  categories!: BrandCategory[];
+
+  @ApiProperty({ example: 'کرج' })
   city!: string;
+
+  @ApiPropertyOptional({ example: 'البرز', nullable: true })
+  province!: string | null;
 
   @ApiProperty({ enum: DeliverableType })
   deliverable!: DeliverableType;
+
+  @ApiProperty({ enum: DeliverableType, isArray: true })
+  deliverables!: DeliverableType[];
 
   @ApiPropertyOptional({ nullable: true, example: 5_000_000 })
   budgetMin!: number | null;

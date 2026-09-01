@@ -40,8 +40,11 @@ export class AuthUserResponse {
   @ApiPropertyOptional({ enum: BrandCategory, nullable: true })
   category!: BrandCategory | null;
 
-  @ApiPropertyOptional({ example: 'تهران', nullable: true })
+  @ApiPropertyOptional({ example: 'کرج', nullable: true })
   city!: string | null;
+
+  @ApiPropertyOptional({ example: 'البرز', nullable: true })
+  province!: string | null;
 
   @ApiPropertyOptional({ example: 'https://instagram.com/brand', nullable: true })
   website!: string | null;
@@ -95,8 +98,11 @@ export class UserProfileResponse {
   @ApiPropertyOptional({ enum: BrandCategory, nullable: true })
   category!: BrandCategory | null;
 
-  @ApiPropertyOptional({ example: 'تهران', nullable: true })
+  @ApiPropertyOptional({ example: 'کرج', nullable: true })
   city!: string | null;
+
+  @ApiPropertyOptional({ example: 'البرز', nullable: true })
+  province!: string | null;
 
   @ApiPropertyOptional({ example: 'https://instagram.com/brand', nullable: true })
   website!: string | null;

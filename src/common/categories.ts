@@ -1,4 +1,8 @@
 import { BrandCategory } from '../generated/prisma/client';
+import {
+  parseDeliverables,
+  primaryDeliverable,
+} from './deliverables';
 
 const ALL = new Set<string>(Object.values(BrandCategory));
 
@@ -54,12 +58,20 @@ export function mapCampaignCategories<
   T extends {
     category?: BrandCategory | null;
     categories: unknown;
+    deliverable?: string | null;
+    deliverables?: unknown;
   },
 >(campaign: T) {
   const categories = parseCategories(campaign.categories, campaign.category);
+  const deliverables = parseDeliverables(
+    campaign.deliverables,
+    campaign.deliverable,
+  );
   return {
     ...campaign,
     category: primaryCategory(categories) ?? campaign.category!,
     categories,
+    deliverable: primaryDeliverable(deliverables) ?? campaign.deliverable!,
+    deliverables,
   };
 }

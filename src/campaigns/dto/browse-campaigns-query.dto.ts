@@ -9,11 +9,23 @@ export class BrowseCampaignsQueryDto {
   @IsEnum(BrandCategory)
   category?: BrandCategory;
 
-  @ApiPropertyOptional({ example: 'تهران' })
+  @ApiPropertyOptional({
+    example: 'کرج',
+    description: 'Exact city match; also includes nationwide (کل ایران) campaigns',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(80)
   city?: string;
+
+  @ApiPropertyOptional({
+    example: 'البرز',
+    description: 'Exact province match; also includes nationwide campaigns',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  province?: string;
 
   @ApiPropertyOptional({
     description: 'Search in title and brief',

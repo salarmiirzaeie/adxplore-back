@@ -17,11 +17,17 @@ export class InvitationCampaignResponse {
   @ApiProperty({ enum: DeliverableType })
   deliverable!: DeliverableType;
 
+  @ApiProperty({ enum: DeliverableType, isArray: true })
+  deliverables!: DeliverableType[];
+
   @ApiProperty({ enum: BrandCategory, isArray: true })
   categories!: BrandCategory[];
 
   @ApiProperty()
   city!: string;
+
+  @ApiPropertyOptional({ nullable: true })
+  province!: string | null;
 
   @ApiProperty({ enum: CampaignStatus })
   status!: CampaignStatus;

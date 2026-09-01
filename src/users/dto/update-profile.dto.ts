@@ -41,12 +41,23 @@ export class UpdateProfileDto {
   @IsEnum(BrandCategory)
   category?: BrandCategory;
 
-  @ApiPropertyOptional({ example: 'تهران', maxLength: 80 })
+  @ApiPropertyOptional({ example: 'کرج', maxLength: 80 })
   @IsOptional()
   @IsString()
   @MinLength(2)
   @MaxLength(80)
   city?: string;
+
+  @ApiPropertyOptional({
+    example: 'البرز',
+    maxLength: 80,
+    description: 'Required together with city',
+  })
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(80)
+  province?: string;
 
   @ApiPropertyOptional({
     example: 'https://instagram.com/brand',

@@ -35,6 +35,7 @@ export class InfluencersService {
       category: primaryCategory(categories) ?? user.category!,
       categories,
       city: user.city!,
+      province: user.province,
       followerRange: user.followerRange!,
     };
   }
@@ -46,6 +47,7 @@ export class InfluencersService {
         user.name?.trim() &&
         user.website?.trim() &&
         user.city?.trim() &&
+        user.province?.trim() &&
         categories.length &&
         user.followerRange,
     );
@@ -59,9 +61,11 @@ export class InfluencersService {
       name: { not: null },
       website: { not: null },
       city: { not: null },
+      province: { not: null },
       followerRange: { not: null },
       ...(query.category ? { category: query.category } : {}),
       ...(query.city ? { city: query.city } : {}),
+      ...(query.province ? { province: query.province } : {}),
       ...(query.followerRange ? { followerRange: query.followerRange } : {}),
     };
 
@@ -84,6 +88,7 @@ export class InfluencersService {
         name: { not: null },
         website: { not: null },
         city: { not: null },
+        province: { not: null },
         followerRange: { not: null },
       },
     });

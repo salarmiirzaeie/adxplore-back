@@ -11,12 +11,19 @@ export class ListInfluencersQueryDto {
   @IsEnum(BrandCategory)
   category?: BrandCategory;
 
-  @ApiPropertyOptional({ example: 'تهران' })
+  @ApiPropertyOptional({ example: 'کرج' })
   @IsOptional()
   @IsString()
   @MinLength(2)
   @MaxLength(80)
   city?: string;
+
+  @ApiPropertyOptional({ example: 'البرز' })
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(80)
+  province?: string;
 
   @ApiPropertyOptional({ enum: FollowerRange })
   @IsOptional()

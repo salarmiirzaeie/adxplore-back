@@ -5,6 +5,7 @@ import {
   VerifyOtpResponse,
 } from '../common/swagger-responses';
 import { AuthService } from './auth.service';
+import { AdminLoginDto } from './dto/admin-login.dto';
 import { RequestOtpDto } from './dto/request-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 
@@ -27,5 +28,13 @@ export class AuthController {
   @ApiOkResponse({ type: VerifyOtpResponse })
   verifyOtp(@Body() dto: VerifyOtpDto) {
     return this.auth.verifyOtp(dto.phone, dto.code, dto.role);
+  }
+
+  @Post('admin/login')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Admin login with phone + password (no OTP)' })
+  @ApiOkResponse({ type: VerifyOtpResponse })
+  adminLogin(@Body() dto: AdminLoginDto) {
+    return this.auth.adminLogin(dto.phone, dto.password);
   }
 }

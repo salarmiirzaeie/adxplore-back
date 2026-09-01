@@ -9,6 +9,7 @@ import {
   parseCategories,
   primaryCategory,
 } from '../common/categories';
+import { resolveProfileLocation } from '../common/cities';
 import { PrismaService } from '../prisma/prisma.service';
 import { UploadsService } from '../uploads/uploads.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
@@ -31,6 +32,7 @@ export class UsersService {
       category: primaryCategory(categories) ?? user.category,
       categories,
       city: user.city,
+      province: user.province,
       website: user.website,
       goal: user.goal,
       businessSize: user.businessSize,
@@ -66,15 +68,31 @@ export class UsersService {
           : existingCategories;
     const nextPrimary = primaryCategory(nextCategories);
 
+    const locationChanging =
+      dto.city !== undefined || dto.province !== undefined;
+    const resolvedLocation = locationChanging
+      ? resolveProfileLocation(
+          dto.city !== undefined ? dto.city : existing.city,
+          dto.province !== undefined ? dto.province : existing.province,
+        )
+      : null;
+    const nextCity = resolvedLocation ? resolvedLocation.city : existing.city;
+    const nextProvince = resolvedLocation
+      ? resolvedLocation.province
+      : existing.province;
+
     if (existing.role === UserRole.BRAND) {
       const nextName =
         dto.name !== undefined ? dto.name.trim() : existing.name;
-      const nextCity =
-        dto.city !== undefined ? dto.city.trim() : existing.city;
 
-      if (!nextName?.trim() || !nextPrimary || !nextCity?.trim()) {
+      if (
+        !nextName?.trim() ||
+        !nextPrimary ||
+        !nextCity?.trim() ||
+        !nextProvince?.trim()
+      ) {
         throw new BadRequestException(
-          'پروفایل برند باید شامل نام، دسته و شهر باشد',
+          'پروفایل برند باید شامل نام، دسته، استان و شهر باشد',
         );
       }
     }
@@ -82,8 +100,6 @@ export class UsersService {
     if (existing.role === UserRole.INFLUENCER) {
       const nextName =
         dto.name !== undefined ? dto.name.trim() : existing.name;
-      const nextCity =
-        dto.city !== undefined ? dto.city.trim() : existing.city;
       const nextWebsite =
         dto.website !== undefined
           ? dto.website === null
@@ -99,11 +115,12 @@ export class UsersService {
         !nextName?.trim() ||
         !nextPrimary ||
         !nextCity?.trim() ||
+        !nextProvince?.trim() ||
         !nextWebsite?.trim() ||
         !nextFollowerRange
       ) {
         throw new BadRequestException(
-          'پروفایل اینفلوئنسر باید شامل نام، اینستاگرام، دسته، شهر و بازه فالوور باشد',
+          'پروفایل اینفلوئنسر باید شامل نام، اینستاگرام، دسته، استان، شهر و بازه فالوور باشد',
         );
       }
     }
@@ -118,7 +135,9 @@ export class UsersService {
         ...(categoriesChanged
           ? { category: nextPrimary, categories: nextCategories }
           : {}),
-        ...(dto.city !== undefined ? { city: dto.city.trim() } : {}),
+        ...(resolvedLocation
+          ? { city: resolvedLocation.city, province: resolvedLocation.province }
+          : {}),
         ...(dto.website !== undefined
           ? {
               website:

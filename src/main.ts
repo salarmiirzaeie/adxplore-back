@@ -54,8 +54,11 @@ async function bootstrap() {
     .addTag('invitations')
     .addTag('offers')
     .addTag('deals')
+    .addTag('payments')
+    .addTag('wallets')
     .addTag('chat')
     .addTag('notifications')
+    .addTag('admin')
     .build();
 
   const document = SwaggerModule.createDocument(app, swaggerConfig);

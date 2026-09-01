@@ -22,6 +22,7 @@ import {
 import { ChatGateway } from '../chat/chat.gateway';
 import { ChatService } from '../chat/chat.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { PaymentsService } from '../payments/payments.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { UploadsService } from '../uploads/uploads.service';
 import { SubmitDeliverableDto } from './dto/submit-deliverable.dto';
@@ -49,13 +50,15 @@ type DealWithRelations = {
   completedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
-  campaign: {
-    id: string;
-    title: string;
-    deliverable: string;
-    category?: import('../generated/prisma/client').BrandCategory | null;
-    categories: unknown;
-    city: string;
+    campaign: {
+      id: string;
+      title: string;
+      deliverable: string;
+      deliverables?: unknown;
+      category?: import('../generated/prisma/client').BrandCategory | null;
+      categories: unknown;
+      city: string;
+      province: string | null;
     status: string;
     brief: string;
     budgetMin: number | null;
@@ -69,6 +72,7 @@ type DealWithRelations = {
     category?: import('../generated/prisma/client').BrandCategory | null;
     categories: unknown;
     city: string | null;
+    province: string | null;
     followerRange: string | null;
   };
   influencer: {
@@ -79,6 +83,7 @@ type DealWithRelations = {
     category?: import('../generated/prisma/client').BrandCategory | null;
     categories: unknown;
     city: string | null;
+    province: string | null;
     followerRange: string | null;
   };
 };
@@ -91,6 +96,7 @@ export class DealsService {
     private readonly uploads: UploadsService,
     private readonly chat: ChatService,
     private readonly chatGateway: ChatGateway,
+    private readonly payments: PaymentsService,
   ) {}
 
   private async emitChatEvent(
@@ -161,26 +167,20 @@ export class DealsService {
         brandId: offer.brandId,
         influencerId: offer.influencerId,
         fee: offer.fee,
-        status: DealStatus.IN_PROGRESS,
+        status: DealStatus.PENDING_PAYMENT,
       },
       include: dealInclude,
     });
 
-    await this.notifications.create(
-      offer.influencerId,
-      NotificationType.DEAL_STARTED,
-      'همکاری شروع شد',
-      `پیشنهاد شما برای کمپین «${campaignTitle}» پذیرفته شد و همکاری شروع شد`,
-      `/app/messages/${offer.id}`,
-      deal.id,
-    );
-
-    await this.emitChatEvent(
-      offer.id,
-      offer.brandId,
-      MessageKind.SYSTEM,
-      `همکاری آغاز شد · ${offer.fee.toLocaleString('fa-IR')} تومان`,
-      { event: 'DEAL_STARTED', dealId: deal.id },
+    await this.payments.createPendingForDeal(
+      {
+        id: deal.id,
+        offerId: offer.id,
+        brandId: offer.brandId,
+        influencerId: offer.influencerId,
+        fee: offer.fee,
+      },
+      campaignTitle,
     );
 
     return this.toPublic(deal);
@@ -357,6 +357,8 @@ export class DealsService {
         { event: 'DEAL_COMPLETED', dealId: deal.id },
       );
 
+      await this.payments.markReleased(deal.id);
+
       return this.toPublic(updated);
     }
 
@@ -409,11 +411,12 @@ export class DealsService {
 
     if (next === DealStatus.CANCELLED) {
       if (
+        deal.status !== DealStatus.PENDING_PAYMENT &&
         deal.status !== DealStatus.IN_PROGRESS &&
         deal.status !== DealStatus.REVISION_REQUESTED
       ) {
         throw new BadRequestException(
-          'فقط همکاری در حال انجام یا در حال اصلاح قابل لغو است',
+          'فقط همکاری در انتظار پرداخت، در حال انجام یا در حال اصلاح قابل لغو است',
         );
       }
 
@@ -422,6 +425,8 @@ export class DealsService {
         data: { status: DealStatus.CANCELLED },
         include: dealInclude,
       });
+
+      await this.payments.markRefunded(deal.id);
 
       const otherPartyId =
         user.id === deal.brandId ? deal.influencerId : deal.brandId;

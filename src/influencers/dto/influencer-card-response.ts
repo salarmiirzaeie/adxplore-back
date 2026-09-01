@@ -20,8 +20,11 @@ export class InfluencerCardResponse {
   @ApiProperty({ enum: BrandCategory })
   category!: BrandCategory;
 
-  @ApiProperty({ example: 'تهران' })
+  @ApiProperty({ example: 'کرج' })
   city!: string;
+
+  @ApiPropertyOptional({ example: 'البرز', nullable: true })
+  province!: string | null;
 
   @ApiProperty({ enum: FollowerRange })
   followerRange!: FollowerRange;

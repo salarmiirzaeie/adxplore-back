@@ -51,9 +51,11 @@ export class InvitationsService {
       id: string;
       title: string;
       deliverable: string;
+      deliverables?: unknown;
       category?: import('../generated/prisma/client').BrandCategory | null;
       categories: unknown;
       city: string;
+      province: string | null;
       status: string;
       brief: string;
       budgetMin: number | null;
@@ -67,6 +69,7 @@ export class InvitationsService {
       category?: import('../generated/prisma/client').BrandCategory | null;
       categories: unknown;
       city: string | null;
+      province: string | null;
       followerRange: string | null;
     };
     influencer: {
@@ -77,6 +80,7 @@ export class InvitationsService {
       category?: import('../generated/prisma/client').BrandCategory | null;
       categories: unknown;
       city: string | null;
+      province: string | null;
       followerRange: string | null;
     };
   }) {
@@ -120,6 +124,7 @@ export class InvitationsService {
       !influencer.website?.trim() ||
       !parseCategories(influencer.categories, influencer.category).length ||
       !influencer.city?.trim() ||
+      !influencer.province?.trim() ||
       !influencer.followerRange
     ) {
       throw new NotFoundException('اینفلوئنسر پیدا نشد');

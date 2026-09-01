@@ -79,9 +79,11 @@ export class OffersService {
       id: string;
       title: string;
       deliverable: string;
+      deliverables?: unknown;
       category?: import('../generated/prisma/client').BrandCategory | null;
       categories: unknown;
       city: string;
+      province: string | null;
       status: string;
       brief: string;
       budgetMin: number | null;
@@ -95,6 +97,7 @@ export class OffersService {
       category?: import('../generated/prisma/client').BrandCategory | null;
       categories: unknown;
       city: string | null;
+      province: string | null;
       followerRange: string | null;
     };
     influencer: {
@@ -105,6 +108,7 @@ export class OffersService {
       category?: import('../generated/prisma/client').BrandCategory | null;
       categories: unknown;
       city: string | null;
+      province: string | null;
       followerRange: string | null;
     };
   }) {
