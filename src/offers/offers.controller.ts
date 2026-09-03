@@ -22,6 +22,7 @@ import type { User } from '../generated/prisma/client';
 import { CreateOfferDto } from './dto/create-offer.dto';
 import { OfferResponse } from './dto/offer-response';
 import { UpdateOfferStatusDto } from './dto/update-offer-status.dto';
+import { UpdateOfferTermsDto } from './dto/update-offer-terms.dto';
 import { OffersService } from './offers.service';
 
 @ApiTags('offers')
@@ -60,6 +61,20 @@ export class OffersController {
   @ApiOkResponse({ type: OfferResponse })
   getOne(@CurrentUser() user: User, @Param('id') id: string) {
     return this.offersService.getOne(user, id);
+  }
+
+  @Patch(':id/terms')
+  @ApiOperation({
+    summary:
+      'Edit pending offer fee/message/deadline (influencer). Allowed until the brand accepts or rejects.',
+  })
+  @ApiOkResponse({ type: OfferResponse })
+  updateTerms(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Body() dto: UpdateOfferTermsDto,
+  ) {
+    return this.offersService.updateTerms(user, id, dto);
   }
 
   @Patch(':id')

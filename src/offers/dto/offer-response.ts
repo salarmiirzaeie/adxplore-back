@@ -99,6 +99,12 @@ export class OfferResponse {
   @ApiProperty({ enum: OfferStatus })
   status!: OfferStatus;
 
+  @ApiProperty({
+    description:
+      'True when the current user is the influencer and the offer is still PENDING (brand has not accepted/rejected).',
+  })
+  canEdit!: boolean;
+
   @ApiProperty({ type: OfferCampaignResponse })
   campaign!: OfferCampaignResponse;
 

@@ -1,0 +1,1 @@
+-- Add OFFER_UPDATED to NotificationType (SQLite stores enums as TEXT)

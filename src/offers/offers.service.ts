@@ -25,6 +25,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOfferDto } from './dto/create-offer.dto';
 import { UpdateOfferStatusDto } from './dto/update-offer-status.dto';
+import { UpdateOfferTermsDto } from './dto/update-offer-terms.dto';
 import { assertInfluencerApproved } from '../common/influencer-approval';
 
 const offerInclude = {
@@ -62,56 +63,59 @@ export class OffersService {
     }
   }
 
-  toPublic(offer: {
-    id: string;
-    campaignId: string;
-    brandId: string;
-    influencerId: string;
-    fee: number;
-    message: string | null;
-    deadline: Date | null;
-    status: OfferStatus;
-    createdAt: Date;
-    updatedAt: Date;
-    campaign: {
+  toPublic(
+    offer: {
       id: string;
-      title: string;
-      deliverable: string;
-      deliverables?: unknown;
-      category?: import('../generated/prisma/client').BrandCategory | null;
-      categories: unknown;
-      city: string;
-      province: string | null;
-      status: string;
-      brief: string;
-      budgetMin: number | null;
-      budgetMax: number | null;
-    };
-    brand: {
-      id: string;
-      name: string | null;
-      photoUrl: string | null;
-      website: string | null;
-      bio: string | null;
-      category?: import('../generated/prisma/client').BrandCategory | null;
-      categories: unknown;
-      city: string | null;
-      province: string | null;
-      followerRange: string | null;
-    };
-    influencer: {
-      id: string;
-      name: string | null;
-      photoUrl: string | null;
-      website: string | null;
-      bio: string | null;
-      category?: import('../generated/prisma/client').BrandCategory | null;
-      categories: unknown;
-      city: string | null;
-      province: string | null;
-      followerRange: string | null;
-    };
-  }) {
+      campaignId: string;
+      brandId: string;
+      influencerId: string;
+      fee: number;
+      message: string | null;
+      deadline: Date | null;
+      status: OfferStatus;
+      createdAt: Date;
+      updatedAt: Date;
+      campaign: {
+        id: string;
+        title: string;
+        deliverable: string;
+        deliverables?: unknown;
+        category?: import('../generated/prisma/client').BrandCategory | null;
+        categories: unknown;
+        city: string;
+        province: string | null;
+        status: string;
+        brief: string;
+        budgetMin: number | null;
+        budgetMax: number | null;
+      };
+      brand: {
+        id: string;
+        name: string | null;
+        photoUrl: string | null;
+        website: string | null;
+        bio: string | null;
+        category?: import('../generated/prisma/client').BrandCategory | null;
+        categories: unknown;
+        city: string | null;
+        province: string | null;
+        followerRange: string | null;
+      };
+      influencer: {
+        id: string;
+        name: string | null;
+        photoUrl: string | null;
+        website: string | null;
+        bio: string | null;
+        category?: import('../generated/prisma/client').BrandCategory | null;
+        categories: unknown;
+        city: string | null;
+        province: string | null;
+        followerRange: string | null;
+      };
+    },
+    viewerId: string,
+  ) {
     return {
       id: offer.id,
       campaignId: offer.campaignId,
@@ -121,6 +125,8 @@ export class OffersService {
       message: offer.message,
       deadline: offer.deadline,
       status: offer.status,
+      canEdit:
+        offer.status === OfferStatus.PENDING && offer.influencerId === viewerId,
       campaign: mapCampaignCategories(offer.campaign),
       brand: mapPartyCategories(offer.brand),
       influencer: mapPartyCategories(offer.influencer),
@@ -202,7 +208,7 @@ export class OffersService {
       );
     }
 
-    return this.toPublic(offer);
+    return this.toPublic(offer, user.id);
   }
 
   async listMine(user: User, campaignId?: string) {
@@ -229,7 +235,7 @@ export class OffersService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return offers.map((o) => this.toPublic(o));
+    return offers.map((o) => this.toPublic(o, user.id));
   }
 
   async getOne(user: User, id: string) {
@@ -243,7 +249,93 @@ export class OffersService {
     if (offer.brandId !== user.id && offer.influencerId !== user.id) {
       throw new ForbiddenException('دسترسی به این پیشنهاد ندارید');
     }
-    return this.toPublic(offer);
+    return this.toPublic(offer, user.id);
+  }
+
+  async updateTerms(user: User, id: string, dto: UpdateOfferTermsDto) {
+    if (user.role !== UserRole.INFLUENCER) {
+      throw new ForbiddenException(
+        'فقط اینفلوئنسر می‌تواند پیشنهاد را ویرایش کند',
+      );
+    }
+    if (
+      dto.fee === undefined &&
+      dto.message === undefined &&
+      dto.deadline === undefined
+    ) {
+      throw new BadRequestException('حداقل یک فیلد برای ویرایش لازم است');
+    }
+
+    const offer = await this.prisma.offer.findUnique({
+      where: { id },
+      include: { campaign: { select: { title: true } } },
+    });
+    if (!offer) {
+      throw new NotFoundException('پیشنهاد پیدا نشد');
+    }
+    if (offer.influencerId !== user.id) {
+      throw new ForbiddenException(
+        'فقط فرستنده پیشنهاد می‌تواند آن را ویرایش کند',
+      );
+    }
+    if (offer.status !== OfferStatus.PENDING) {
+      throw new BadRequestException(
+        'فقط تا قبل از پاسخ برند می‌توان پیشنهاد را ویرایش کرد',
+      );
+    }
+
+    const data: {
+      fee?: number;
+      message?: string | null;
+      deadline?: Date | null;
+    } = {};
+    if (dto.fee !== undefined) data.fee = dto.fee;
+    if (dto.message !== undefined) data.message = dto.message?.trim() || null;
+    if (dto.deadline !== undefined) {
+      data.deadline = dto.deadline ? new Date(dto.deadline) : null;
+    }
+
+    const updated = await this.prisma.offer.update({
+      where: { id },
+      data,
+      include: offerInclude,
+    });
+
+    const deadlineChanged =
+      (updated.deadline?.getTime() ?? null) !==
+      (offer.deadline?.getTime() ?? null);
+    const changed =
+      updated.fee !== offer.fee ||
+      updated.message !== offer.message ||
+      deadlineChanged;
+
+    if (changed) {
+      await this.notifications.create(
+        offer.brandId,
+        NotificationType.OFFER_UPDATED,
+        'پیشنهاد ویرایش شد',
+        `اینفلوئنسر «${user.name?.trim() || 'اینفلوئنسر'}» پیشنهاد کمپین «${offer.campaign.title}» را ویرایش کرد`,
+        `/app/messages/${offer.id}`,
+        offer.id,
+      );
+      await this.emitChatEvent(
+        offer.id,
+        user.id,
+        MessageKind.SYSTEM,
+        'پیشنهاد ویرایش شد',
+        {
+          event: 'OFFER_UPDATED',
+          fee: updated.fee,
+          message: updated.message,
+          deadline: updated.deadline,
+          previousFee: offer.fee,
+          previousMessage: offer.message,
+          previousDeadline: offer.deadline,
+        },
+      );
+    }
+
+    return this.toPublic(updated, user.id);
   }
 
   async updateStatus(user: User, id: string, dto: UpdateOfferStatusDto) {
@@ -330,6 +422,6 @@ export class OffersService {
       );
     }
 
-    return this.toPublic(updated);
+    return this.toPublic(updated, user.id);
   }
 }

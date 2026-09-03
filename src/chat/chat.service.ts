@@ -7,6 +7,7 @@ import {
 import {
   MessageKind,
   NotificationType,
+  OfferStatus,
   Prisma,
   type User,
 } from '../generated/prisma/client';
@@ -15,6 +16,22 @@ import { PrismaService } from '../prisma/prisma.service';
 import { UploadsService } from '../uploads/uploads.service';
 
 export type ChatEventMetadata = Record<string, unknown>;
+
+const conversationOfferSelect = {
+  id: true,
+  fee: true,
+  message: true,
+  deadline: true,
+  status: true,
+  updatedAt: true,
+  campaign: { select: { title: true } },
+  brand: {
+    select: { id: true, name: true, photoUrl: true, bio: true },
+  },
+  influencer: {
+    select: { id: true, name: true, photoUrl: true, bio: true },
+  },
+} as const;
 
 @Injectable()
 export class ChatService {
@@ -134,76 +151,60 @@ export class ChatService {
           take: 1,
         },
         offer: {
-          select: {
-            campaign: { select: { title: true } },
-            brand: {
-              select: { id: true, name: true, photoUrl: true, bio: true },
-            },
-            influencer: {
-              select: { id: true, name: true, photoUrl: true, bio: true },
-            },
-          },
+          select: conversationOfferSelect,
         },
       },
       orderBy: { updatedAt: 'desc' },
     });
 
     return Promise.all(
-      conversations.map(async (c) => {
-        const peer = c.brandId === user.id ? c.offer.influencer : c.offer.brand;
-        const unreadCount = await this.prisma.message.count({
-          where: {
-            conversationId: c.id,
-            senderId: { not: user.id },
-            readAt: null,
-          },
-        });
-        const last = c.messages[0] ?? null;
-        return {
-          id: c.id,
-          offerId: c.offerId,
-          campaignId: c.campaignId,
-          brandId: c.brandId,
-          influencerId: c.influencerId,
-          campaignTitle: c.offer.campaign.title,
-          peerId: peer.id,
-          peerName: peer.name,
-          peerPhotoUrl: peer.photoUrl,
-          peerBio: peer.bio,
-          lastMessage: last ? this.toMessage(last) : null,
-          unreadCount,
-          createdAt: c.createdAt,
-          updatedAt: c.updatedAt,
-        };
-      }),
+      conversations.map((c) => this.mapConversation(c, user.id)),
     );
   }
 
-  async toConversationPublic(conversationId: string, userId: string) {
-    const c = await this.prisma.conversation.findUnique({
-      where: { id: conversationId },
-      include: {
-        messages: {
-          orderBy: { createdAt: 'desc' },
-          take: 1,
-        },
-        offer: {
-          select: {
-            campaign: { select: { title: true } },
-            brand: {
-              select: { id: true, name: true, photoUrl: true, bio: true },
-            },
-            influencer: {
-              select: { id: true, name: true, photoUrl: true, bio: true },
-            },
-          },
-        },
-      },
-    });
-    if (!c) {
-      throw new NotFoundException('گفتگو پیدا نشد');
-    }
-
+  private async mapConversation(
+    c: {
+      id: string;
+      offerId: string;
+      campaignId: string;
+      brandId: string;
+      influencerId: string;
+      createdAt: Date;
+      updatedAt: Date;
+      messages: Array<{
+        id: string;
+        conversationId: string;
+        senderId: string;
+        kind: MessageKind;
+        body: string;
+        metadata: unknown;
+        createdAt: Date;
+        readAt: Date | null;
+      }>;
+      offer: {
+        id: string;
+        fee: number;
+        message: string | null;
+        deadline: Date | null;
+        status: OfferStatus;
+        updatedAt: Date;
+        campaign: { title: string };
+        brand: {
+          id: string;
+          name: string | null;
+          photoUrl: string | null;
+          bio: string | null;
+        };
+        influencer: {
+          id: string;
+          name: string | null;
+          photoUrl: string | null;
+          bio: string | null;
+        };
+      };
+    },
+    userId: string,
+  ) {
     const peer = c.brandId === userId ? c.offer.influencer : c.offer.brand;
     const unreadCount = await this.prisma.message.count({
       where: {
@@ -213,7 +214,6 @@ export class ChatService {
       },
     });
     const last = c.messages[0] ?? null;
-
     return {
       id: c.id,
       offerId: c.offerId,
@@ -225,11 +225,41 @@ export class ChatService {
       peerName: peer.name,
       peerPhotoUrl: peer.photoUrl,
       peerBio: peer.bio,
+      offer: {
+        id: c.offer.id,
+        fee: c.offer.fee,
+        message: c.offer.message,
+        deadline: c.offer.deadline,
+        status: c.offer.status,
+        canEdit:
+          c.offer.status === OfferStatus.PENDING && c.influencerId === userId,
+        updatedAt: c.offer.updatedAt,
+      },
       lastMessage: last ? this.toMessage(last) : null,
       unreadCount,
       createdAt: c.createdAt,
       updatedAt: c.updatedAt,
     };
+  }
+
+  async toConversationPublic(conversationId: string, userId: string) {
+    const c = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+      include: {
+        messages: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+        offer: {
+          select: conversationOfferSelect,
+        },
+      },
+    });
+    if (!c) {
+      throw new NotFoundException('گفتگو پیدا نشد');
+    }
+
+    return this.mapConversation(c, userId);
   }
 
   async getOne(user: User, id: string) {
@@ -273,8 +303,7 @@ export class ChatService {
 
     if (file) {
       const saved = this.uploads.saveMedia('chat', file);
-      kind =
-        saved.kind === 'VIDEO' ? MessageKind.VIDEO : MessageKind.IMAGE;
+      kind = saved.kind === 'VIDEO' ? MessageKind.VIDEO : MessageKind.IMAGE;
       if (!storedBody) {
         storedBody = kind === MessageKind.VIDEO ? 'ویدیو' : 'تصویر';
       }

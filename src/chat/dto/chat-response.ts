@@ -1,5 +1,31 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { MessageKind } from '../../generated/prisma/client';
+import { MessageKind, OfferStatus } from '../../generated/prisma/client';
+
+export class ConversationOfferResponse {
+  @ApiProperty()
+  id!: string;
+
+  @ApiProperty({ example: 8_000_000 })
+  fee!: number;
+
+  @ApiPropertyOptional({ nullable: true })
+  message!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  deadline!: Date | null;
+
+  @ApiProperty({ enum: OfferStatus })
+  status!: OfferStatus;
+
+  @ApiProperty({
+    description:
+      'True for the influencer while the offer is PENDING. Show the edit button on the chat offer card.',
+  })
+  canEdit!: boolean;
+
+  @ApiProperty()
+  updatedAt!: Date;
+}
 
 export class ChatMessageResponse {
   @ApiProperty()
@@ -57,6 +83,9 @@ export class ConversationResponse {
 
   @ApiPropertyOptional({ nullable: true })
   peerBio!: string | null;
+
+  @ApiProperty({ type: ConversationOfferResponse })
+  offer!: ConversationOfferResponse;
 
   @ApiPropertyOptional({ type: ChatMessageResponse, nullable: true })
   lastMessage!: ChatMessageResponse | null;
