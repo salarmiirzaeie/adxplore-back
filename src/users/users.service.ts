@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
+  CampaignStatus,
   InfluencerApprovalStatus,
   UserRole,
   type User,
@@ -58,6 +59,7 @@ export class UsersService {
       city: user.city,
       province: user.province,
       website: user.website,
+      bio: user.bio,
       goal: user.goal,
       businessSize: user.businessSize,
       followerRange: user.followerRange,
@@ -76,6 +78,81 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
     return this.toPublic(user);
+  }
+
+  toMarketplaceProfile(user: User) {
+    const categories = parseCategories(user.categories, user.category);
+    return {
+      id: user.id,
+      name: user.name,
+      role: user.role,
+      photoUrl: user.photoUrl,
+      category: primaryCategory(categories) ?? user.category,
+      categories,
+      city: user.city,
+      province: user.province,
+      website: user.website,
+      bio: user.bio,
+      goal: user.role === UserRole.BRAND ? user.goal : null,
+      businessSize: user.role === UserRole.BRAND ? user.businessSize : null,
+      followerRange:
+        user.role === UserRole.INFLUENCER ? user.followerRange : null,
+    };
+  }
+
+  async getPublicProfile(viewer: User, id: string) {
+    if (viewer.id === id) {
+      return this.toMarketplaceProfile(viewer);
+    }
+
+    const target = await this.prisma.user.findUnique({ where: { id } });
+    if (!target || target.role === UserRole.ADMIN) {
+      throw new NotFoundException('پروفایل پیدا نشد');
+    }
+
+    if (viewer.role === UserRole.ADMIN) {
+      return this.toMarketplaceProfile(target);
+    }
+
+    const allowed = await this.canViewPublicProfile(viewer, target);
+    if (!allowed) {
+      throw new NotFoundException('پروفایل پیدا نشد');
+    }
+
+    return this.toMarketplaceProfile(target);
+  }
+
+  private async canViewPublicProfile(viewer: User, target: User) {
+    if (
+      viewer.role === UserRole.BRAND &&
+      target.role === UserRole.INFLUENCER &&
+      target.approvalStatus === InfluencerApprovalStatus.APPROVED &&
+      isInfluencerProfileComplete(target)
+    ) {
+      return true;
+    }
+
+    if (viewer.role === UserRole.INFLUENCER && target.role === UserRole.BRAND) {
+      const openCampaign = await this.prisma.campaign.findFirst({
+        where: { brandId: target.id, status: CampaignStatus.OPEN },
+        select: { id: true },
+      });
+      if (openCampaign) return true;
+    }
+
+    const pair = {
+      OR: [
+        { brandId: viewer.id, influencerId: target.id },
+        { brandId: target.id, influencerId: viewer.id },
+      ],
+    };
+
+    const [invitation, offer] = await Promise.all([
+      this.prisma.invitation.findFirst({ where: pair, select: { id: true } }),
+      this.prisma.offer.findFirst({ where: pair, select: { id: true } }),
+    ]);
+
+    return Boolean(invitation || offer);
   }
 
   async ensureInstagramVerifyCode(user: User): Promise<User> {
@@ -232,6 +309,9 @@ export class UsersService {
           ? {
               website: dto.website === null ? null : dto.website.trim() || null,
             }
+          : {}),
+        ...(dto.bio !== undefined
+          ? { bio: dto.bio === null ? null : dto.bio.trim() || null }
           : {}),
         ...(dto.goal !== undefined ? { goal: dto.goal } : {}),
         ...(dto.businessSize !== undefined

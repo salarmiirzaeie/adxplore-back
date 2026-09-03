@@ -4,11 +4,27 @@ export const partySelect = {
   name: true,
   photoUrl: true,
   website: true,
+  bio: true,
   category: true,
   categories: true,
   city: true,
   province: true,
   followerRange: true,
+} as const;
+
+/** Brand snippet on campaign browse / detail for influencer profile pages. */
+export const campaignBrandSelect = {
+  id: true,
+  name: true,
+  photoUrl: true,
+  website: true,
+  bio: true,
+  category: true,
+  categories: true,
+  city: true,
+  province: true,
+  goal: true,
+  businessSize: true,
 } as const;
 
 /** Campaign snippet used on invitations (fuller) and offers. */

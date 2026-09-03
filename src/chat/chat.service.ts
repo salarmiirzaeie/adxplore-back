@@ -12,6 +12,7 @@ import {
 } from '../generated/prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { UploadsService } from '../uploads/uploads.service';
 
 export type ChatEventMetadata = Record<string, unknown>;
 
@@ -20,6 +21,7 @@ export class ChatService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
+    private readonly uploads: UploadsService,
   ) {}
 
   toMessage(message: {
@@ -134,8 +136,12 @@ export class ChatService {
         offer: {
           select: {
             campaign: { select: { title: true } },
-            brand: { select: { id: true, name: true, photoUrl: true } },
-            influencer: { select: { id: true, name: true, photoUrl: true } },
+            brand: {
+              select: { id: true, name: true, photoUrl: true, bio: true },
+            },
+            influencer: {
+              select: { id: true, name: true, photoUrl: true, bio: true },
+            },
           },
         },
       },
@@ -160,8 +166,10 @@ export class ChatService {
           brandId: c.brandId,
           influencerId: c.influencerId,
           campaignTitle: c.offer.campaign.title,
+          peerId: peer.id,
           peerName: peer.name,
           peerPhotoUrl: peer.photoUrl,
+          peerBio: peer.bio,
           lastMessage: last ? this.toMessage(last) : null,
           unreadCount,
           createdAt: c.createdAt,
@@ -182,8 +190,12 @@ export class ChatService {
         offer: {
           select: {
             campaign: { select: { title: true } },
-            brand: { select: { id: true, name: true, photoUrl: true } },
-            influencer: { select: { id: true, name: true, photoUrl: true } },
+            brand: {
+              select: { id: true, name: true, photoUrl: true, bio: true },
+            },
+            influencer: {
+              select: { id: true, name: true, photoUrl: true, bio: true },
+            },
           },
         },
       },
@@ -209,8 +221,10 @@ export class ChatService {
       brandId: c.brandId,
       influencerId: c.influencerId,
       campaignTitle: c.offer.campaign.title,
+      peerId: peer.id,
       peerName: peer.name,
       peerPhotoUrl: peer.photoUrl,
+      peerBio: peer.bio,
       lastMessage: last ? this.toMessage(last) : null,
       unreadCount,
       createdAt: c.createdAt,
@@ -241,19 +255,42 @@ export class ChatService {
     return messages.reverse().map((m) => this.toMessage(m));
   }
 
-  async sendMessage(user: User, conversationId: string, body: string) {
+  async sendMessage(
+    user: User,
+    conversationId: string,
+    body?: string,
+    file?: Express.Multer.File,
+  ) {
     const conversation = await this.assertParticipant(conversationId, user.id);
-    const text = body.trim();
-    if (!text) {
+    const text = body?.trim() ?? '';
+    if (!text && !file) {
       throw new BadRequestException('پیام خالی است');
+    }
+
+    let kind: MessageKind = MessageKind.TEXT;
+    let storedBody = text;
+    let metadata: ChatEventMetadata | undefined;
+
+    if (file) {
+      const saved = this.uploads.saveMedia('chat', file);
+      kind =
+        saved.kind === 'VIDEO' ? MessageKind.VIDEO : MessageKind.IMAGE;
+      if (!storedBody) {
+        storedBody = kind === MessageKind.VIDEO ? 'ویدیو' : 'تصویر';
+      }
+      metadata = {
+        mediaUrl: this.uploads.toPublicUrl(saved.relative),
+        mimeType: file.mimetype,
+      };
     }
 
     const message = await this.prisma.message.create({
       data: {
         conversationId,
         senderId: user.id,
-        kind: MessageKind.TEXT,
-        body: text,
+        kind,
+        body: storedBody,
+        metadata: metadata as Prisma.InputJsonValue | undefined,
       },
     });
 
@@ -267,7 +304,18 @@ export class ChatService {
         ? conversation.influencerId
         : conversation.brandId;
 
-    const preview = text.length > 80 ? `${text.slice(0, 80)}…` : text;
+    const preview =
+      kind === MessageKind.IMAGE
+        ? text
+          ? `تصویر · ${text.length > 60 ? `${text.slice(0, 60)}…` : text}`
+          : 'تصویر'
+        : kind === MessageKind.VIDEO
+          ? text
+            ? `ویدیو · ${text.length > 60 ? `${text.slice(0, 60)}…` : text}`
+            : 'ویدیو'
+          : text.length > 80
+            ? `${text.slice(0, 80)}…`
+            : text;
 
     await this.notifications.create(
       recipientId,

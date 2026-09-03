@@ -2,6 +2,7 @@ import {
   Controller,
   Delete,
   Get,
+  Param,
   Patch,
   Post,
   UploadedFile,
@@ -25,6 +26,7 @@ import { UserProfileResponse } from '../common/swagger-responses';
 import type { User } from '../generated/prisma/client';
 import { UPLOAD_MAX_BYTES } from '../uploads/uploads.service';
 import { InstagramApprovalResponse } from './dto/instagram-approval-response';
+import { PublicProfileResponse } from './dto/public-profile-response';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UsersService } from './users.service';
 
@@ -100,5 +102,15 @@ export class UsersController {
   @ApiOkResponse({ type: UserProfileResponse })
   removePhoto(@CurrentUser() user: User) {
     return this.users.removePhoto(user);
+  }
+
+  @Get(':id/profile')
+  @ApiOperation({
+    summary:
+      'Public brand or influencer profile (no phone). From chat, campaign, or marketplace.',
+  })
+  @ApiOkResponse({ type: PublicProfileResponse })
+  getPublicProfile(@CurrentUser() user: User, @Param('id') id: string) {
+    return this.users.getPublicProfile(user, id);
   }
 }

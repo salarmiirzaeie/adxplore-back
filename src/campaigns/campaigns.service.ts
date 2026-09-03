@@ -14,6 +14,7 @@ import {
   type User,
 } from '../generated/prisma/client';
 import {
+  mapPartyCategories,
   normalizeCategories,
   parseCategories,
   primaryCategory,
@@ -27,6 +28,7 @@ import {
   parseDeliverables,
   primaryDeliverable,
 } from '../common/deliverables';
+import { campaignBrandSelect } from '../common/party-select';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   CAMPAIGN_MAX_IMAGES,
@@ -37,7 +39,29 @@ import { BrowseCampaignsQueryDto } from './dto/browse-campaigns-query.dto';
 import { CreateCampaignDto } from './dto/create-campaign.dto';
 import { UpdateCampaignDto } from './dto/update-campaign.dto';
 
-type CampaignWithImages = Campaign & { images: CampaignImage[] };
+const campaignPublicInclude = {
+  images: { orderBy: { sortOrder: 'asc' as const } },
+  brand: { select: campaignBrandSelect },
+};
+
+type CampaignBrand = {
+  id: string;
+  name: string | null;
+  photoUrl: string | null;
+  website: string | null;
+  bio: string | null;
+  category: import('../generated/prisma/client').BrandCategory | null;
+  categories: unknown;
+  city: string | null;
+  province: string | null;
+  goal: import('../generated/prisma/client').BrandGoal | null;
+  businessSize: import('../generated/prisma/client').BusinessSize | null;
+};
+
+type CampaignWithImages = Campaign & {
+  images: CampaignImage[];
+  brand: CampaignBrand;
+};
 
 @Injectable()
 export class CampaignsService {
@@ -76,6 +100,7 @@ export class CampaignsService {
           url: img.url,
           sortOrder: img.sortOrder,
         })),
+      brand: mapPartyCategories(campaign.brand),
       createdAt: campaign.createdAt,
       updatedAt: campaign.updatedAt,
     };
@@ -133,7 +158,7 @@ export class CampaignsService {
     this.assertBrand(user);
     const campaign = await this.prisma.campaign.findUnique({
       where: { id },
-      include: { images: { orderBy: { sortOrder: 'asc' } } },
+      include: campaignPublicInclude,
     });
     if (!campaign || campaign.brandId !== user.id) {
       throw new NotFoundException('کمپین پیدا نشد');
@@ -171,7 +196,7 @@ export class CampaignsService {
         budgetMax: dto.budgetMax ?? null,
         status,
       },
-      include: { images: true },
+      include: campaignPublicInclude,
     });
 
     return this.toPublic(campaign);
@@ -182,7 +207,7 @@ export class CampaignsService {
 
     const campaigns = await this.prisma.campaign.findMany({
       where: { brandId: user.id },
-      include: { images: { orderBy: { sortOrder: 'asc' } } },
+      include: campaignPublicInclude,
       orderBy: { createdAt: 'desc' },
     });
 
@@ -243,7 +268,7 @@ export class CampaignsService {
 
     const campaigns = await this.prisma.campaign.findMany({
       where,
-      include: { images: { orderBy: { sortOrder: 'asc' } } },
+      include: campaignPublicInclude,
       orderBy: { createdAt: 'desc' },
       take: 100,
     });
@@ -270,7 +295,7 @@ export class CampaignsService {
   async getOne(user: User, id: string) {
     const campaign = await this.prisma.campaign.findUnique({
       where: { id },
-      include: { images: { orderBy: { sortOrder: 'asc' } } },
+      include: campaignPublicInclude,
     });
     if (!campaign) {
       throw new NotFoundException('کمپین پیدا نشد');
@@ -370,7 +395,7 @@ export class CampaignsService {
           ? { rejectionReason: null, rejectedAt: null }
           : {}),
       },
-      include: { images: { orderBy: { sortOrder: 'asc' } } },
+      include: campaignPublicInclude,
     });
 
     return this.toPublic(campaign);

@@ -47,10 +47,16 @@ export class ConversationResponse {
   campaignTitle!: string | null;
 
   @ApiPropertyOptional({ nullable: true })
+  peerId!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
   peerName!: string | null;
 
   @ApiPropertyOptional({ nullable: true })
   peerPhotoUrl!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  peerBio!: string | null;
 
   @ApiPropertyOptional({ type: ChatMessageResponse, nullable: true })
   lastMessage!: ChatMessageResponse | null;

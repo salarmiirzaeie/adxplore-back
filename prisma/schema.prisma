@@ -90,6 +90,12 @@ enum DealStatus {
   CANCELLED
 }
 
+enum DealContentKind {
+  LINK
+  IMAGE
+  VIDEO
+}
+
 enum PaymentStatus {
   PENDING
   HELD
@@ -113,6 +119,8 @@ enum MessageKind {
   TEXT
   SYSTEM
   DELIVERABLE
+  IMAGE
+  VIDEO
 }
 
 enum InfluencerApprovalStatus {
@@ -161,6 +169,8 @@ model User {
   city                 String?
   province             String?
   website              String?
+  /// Short about-me / about-the-brand text collected at onboarding
+  bio                  String?
   goal                 BrandGoal?
   businessSize         BusinessSize?
   followerRange        FollowerRange?
@@ -324,6 +334,7 @@ model Deal {
   influencer    User       @relation("DealInfluencer", fields: [influencerId], references: [id], onDelete: Cascade)
   fee           Int
   status        DealStatus @default(PENDING_PAYMENT)
+  contentKind   DealContentKind?
   contentUrl    String?
   note          String?
   proofUrl      String?

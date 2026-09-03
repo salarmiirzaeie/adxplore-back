@@ -53,6 +53,12 @@ export class AuthUserResponse {
   })
   website!: string | null;
 
+  @ApiPropertyOptional({
+    nullable: true,
+    example: 'برند مراقبت از پوست با تمرکز روی محصولات گیاهی.',
+  })
+  bio!: string | null;
+
   @ApiPropertyOptional({ enum: BrandGoal, nullable: true })
   goal!: BrandGoal | null;
 
@@ -138,6 +144,12 @@ export class UserProfileResponse {
     nullable: true,
   })
   website!: string | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    example: 'برند مراقبت از پوست با تمرکز روی محصولات گیاهی.',
+  })
+  bio!: string | null;
 
   @ApiPropertyOptional({ enum: BrandGoal, nullable: true })
   goal!: BrandGoal | null;

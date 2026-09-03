@@ -20,6 +20,12 @@ export class OfferPartyResponse {
   @ApiPropertyOptional({ nullable: true })
   website!: string | null;
 
+  @ApiPropertyOptional({
+    nullable: true,
+    example: 'برند مراقبت از پوست با تمرکز روی محصولات گیاهی.',
+  })
+  bio!: string | null;
+
   @ApiPropertyOptional({ enum: BrandCategory, isArray: true })
   categories!: BrandCategory[];
 

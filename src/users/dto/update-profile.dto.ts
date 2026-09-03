@@ -72,6 +72,19 @@ export class UpdateProfileDto {
   website?: string | null;
 
   @ApiPropertyOptional({
+    example: 'برند مراقبت از پوست با تمرکز روی محصولات گیاهی.',
+    maxLength: 1000,
+    nullable: true,
+    description:
+      'About the brand or influencer. Shown on public profiles. Pass null to clear.',
+  })
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  @MaxLength(1000)
+  bio?: string | null;
+
+  @ApiPropertyOptional({
     enum: BrandGoal,
     example: BrandGoal.AWARENESS,
     nullable: true,

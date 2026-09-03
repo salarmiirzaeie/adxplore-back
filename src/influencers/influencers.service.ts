@@ -37,6 +37,7 @@ export class InfluencersService {
       city: user.city!,
       province: user.province,
       followerRange: user.followerRange!,
+      bio: user.bio,
     };
   }
 

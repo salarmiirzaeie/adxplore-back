@@ -244,6 +244,7 @@ export class AdminService {
         website: u.website,
         instagramHandle: handle,
         photoUrl: u.photoUrl,
+        bio: u.bio,
         city: u.city,
         province: u.province,
         followerRange: u.followerRange,

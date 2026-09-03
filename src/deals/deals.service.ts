@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  DealContentKind,
   DealStatus,
   MessageKind,
   NotificationType,
@@ -39,6 +40,7 @@ type DealWithRelations = {
   influencerId: string;
   fee: number;
   status: DealStatus;
+  contentKind: DealContentKind | null;
   contentUrl: string | null;
   note: string | null;
   proofUrl: string | null;
@@ -66,6 +68,7 @@ type DealWithRelations = {
     name: string | null;
     photoUrl: string | null;
     website: string | null;
+    bio: string | null;
     category?: import('../generated/prisma/client').BrandCategory | null;
     categories: unknown;
     city: string | null;
@@ -77,6 +80,7 @@ type DealWithRelations = {
     name: string | null;
     photoUrl: string | null;
     website: string | null;
+    bio: string | null;
     category?: import('../generated/prisma/client').BrandCategory | null;
     categories: unknown;
     city: string | null;
@@ -124,6 +128,9 @@ export class DealsService {
       influencerId: deal.influencerId,
       fee: deal.fee,
       status: deal.status,
+      contentKind:
+        deal.contentKind ??
+        (deal.contentUrl ? DealContentKind.LINK : null),
       contentUrl: deal.contentUrl,
       note: deal.note,
       proofUrl: deal.proofUrl,
@@ -228,7 +235,7 @@ export class DealsService {
     user: User,
     id: string,
     dto: SubmitDeliverableDto,
-    proof?: Express.Multer.File,
+    files?: { file?: Express.Multer.File[]; proof?: Express.Multer.File[] },
   ) {
     const deal = await this.prisma.deal.findUnique({
       where: { id },
@@ -249,24 +256,57 @@ export class DealsService {
       );
     }
 
-    const contentUrl = dto.contentUrl.trim();
-    if (!contentUrl) {
-      throw new BadRequestException('آدرس محتوا الزامی است');
-    }
+    const contentFile = files?.file?.[0];
+    const proof = files?.proof?.[0];
+    const kind = this.resolveContentKind(dto.kind, contentFile);
 
+    let contentUrl: string;
     let proofUrl: string | null = deal.proofUrl;
-    if (proof) {
-      this.uploads.assertImageFile(proof);
+
+    if (kind === DealContentKind.LINK) {
+      const link = dto.contentUrl?.trim() ?? '';
+      if (!link) {
+        throw new BadRequestException('آدرس محتوا الزامی است');
+      }
+      contentUrl = link;
+      this.uploads.deleteByPublicUrl(deal.contentUrl);
+      if (proof) {
+        this.uploads.assertImageFile(proof);
+        if (deal.proofUrl) {
+          this.uploads.deleteByPublicUrl(deal.proofUrl);
+        }
+        proofUrl = this.uploads.toPublicUrl(
+          this.uploads.saveImage('deals', proof),
+        );
+      }
+    } else {
+      if (!contentFile) {
+        throw new BadRequestException(
+          kind === DealContentKind.VIDEO
+            ? 'فایل ویدیو الزامی است'
+            : 'فایل تصویر الزامی است',
+        );
+      }
+      const saved = this.uploads.saveMedia('deals', contentFile);
+      if (saved.kind !== kind) {
+        throw new BadRequestException(
+          kind === DealContentKind.VIDEO
+            ? 'فایل باید ویدیو باشد'
+            : 'فایل باید تصویر باشد',
+        );
+      }
+      this.uploads.deleteByPublicUrl(deal.contentUrl);
       if (deal.proofUrl) {
         this.uploads.deleteByPublicUrl(deal.proofUrl);
       }
-      const relative = this.uploads.saveImage('deals', proof);
-      proofUrl = this.uploads.toPublicUrl(relative);
+      contentUrl = this.uploads.toPublicUrl(saved.relative);
+      proofUrl = null;
     }
 
     const updated = await this.prisma.deal.update({
       where: { id },
       data: {
+        contentKind: kind,
         contentUrl,
         note: dto.note?.trim() || null,
         proofUrl,
@@ -294,6 +334,7 @@ export class DealsService {
       {
         event: 'DELIVERABLE_SUBMITTED',
         dealId: deal.id,
+        contentKind: kind,
         contentUrl,
         note: dto.note?.trim() || null,
         proofUrl,
@@ -301,6 +342,18 @@ export class DealsService {
     );
 
     return this.toPublic(updated);
+  }
+
+  private resolveContentKind(
+    requested: DealContentKind | undefined,
+    file?: Express.Multer.File,
+  ): DealContentKind {
+    if (requested) return requested;
+    if (file) {
+      if (file.mimetype.startsWith('video/')) return DealContentKind.VIDEO;
+      return DealContentKind.IMAGE;
+    }
+    return DealContentKind.LINK;
   }
 
   async updateStatus(user: User, id: string, dto: UpdateDealStatusDto) {
@@ -409,6 +462,18 @@ export class DealsService {
     }
 
     if (next === DealStatus.CANCELLED) {
+      const contentPublished =
+        deal.status === DealStatus.DELIVERED ||
+        deal.status === DealStatus.REVISION_REQUESTED ||
+        Boolean(deal.contentUrl) ||
+        Boolean(deal.submittedAt);
+
+      if (user.id === deal.brandId && contentPublished) {
+        throw new BadRequestException(
+          'پس از انتشار محتوا، برند نمی‌تواند همکاری را لغو کند',
+        );
+      }
+
       if (
         deal.status !== DealStatus.PENDING_PAYMENT &&
         deal.status !== DealStatus.IN_PROGRESS &&

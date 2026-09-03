@@ -92,6 +92,7 @@ export class OffersService {
       name: string | null;
       photoUrl: string | null;
       website: string | null;
+      bio: string | null;
       category?: import('../generated/prisma/client').BrandCategory | null;
       categories: unknown;
       city: string | null;
@@ -103,6 +104,7 @@ export class OffersService {
       name: string | null;
       photoUrl: string | null;
       website: string | null;
+      bio: string | null;
       category?: import('../generated/prisma/client').BrandCategory | null;
       categories: unknown;
       city: string | null;

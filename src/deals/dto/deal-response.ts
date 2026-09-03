@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   BrandCategory,
   CampaignStatus,
+  DealContentKind,
   DealStatus,
   DeliverableType,
   FollowerRange,
@@ -19,6 +20,12 @@ export class DealPartyResponse {
 
   @ApiPropertyOptional({ nullable: true })
   website!: string | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    example: 'تولیدکننده محتوای زیبایی و لایف‌استایل.',
+  })
+  bio!: string | null;
 
   @ApiPropertyOptional({ enum: BrandCategory, isArray: true })
   categories!: BrandCategory[];
@@ -89,6 +96,9 @@ export class DealResponse {
 
   @ApiProperty({ enum: DealStatus })
   status!: DealStatus;
+
+  @ApiPropertyOptional({ enum: DealContentKind, nullable: true })
+  contentKind!: DealContentKind | null;
 
   @ApiPropertyOptional({ nullable: true })
   contentUrl!: string | null;

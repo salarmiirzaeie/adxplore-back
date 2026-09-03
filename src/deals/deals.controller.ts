@@ -6,11 +6,11 @@ import {
   Patch,
   Post,
   Query,
-  UploadedFile,
+  UploadedFiles,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import {
   ApiBearerAuth,
   ApiBody,
@@ -24,7 +24,7 @@ import { memoryStorage } from 'multer';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import type { User } from '../generated/prisma/client';
-import { UPLOAD_MAX_BYTES } from '../uploads/uploads.service';
+import { UPLOAD_MEDIA_MAX_BYTES } from '../uploads/uploads.service';
 import { DealsService } from './deals.service';
 import { DealResponse } from './dto/deal-response';
 import { SubmitDeliverableDto } from './dto/submit-deliverable.dto';
@@ -60,43 +60,51 @@ export class DealsController {
   @Post(':id/deliverable')
   @ApiOperation({
     summary:
-      'Submit deliverable (influencer). Multipart: contentUrl, note?, proof? — or JSON body without file.',
+      'Submit deliverable (influencer). kind=LINK|IMAGE|VIDEO. Multipart: kind, contentUrl?, note?, file?, proof?',
   })
   @ApiConsumes('multipart/form-data', 'application/json')
   @ApiBody({
     schema: {
       type: 'object',
-      required: ['contentUrl'],
       properties: {
+        kind: { type: 'string', enum: ['LINK', 'IMAGE', 'VIDEO'] },
         contentUrl: {
           type: 'string',
           example: 'https://www.instagram.com/p/ABC123/',
         },
         note: { type: 'string', example: 'ریلز طبق بریف آماده شد' },
+        file: { type: 'string', format: 'binary' },
         proof: { type: 'string', format: 'binary' },
       },
     },
   })
   @ApiOkResponse({ type: DealResponse })
   @UseInterceptors(
-    FileInterceptor('proof', {
-      storage: memoryStorage(),
-      limits: { fileSize: UPLOAD_MAX_BYTES },
-    }),
+    FileFieldsInterceptor(
+      [
+        { name: 'file', maxCount: 1 },
+        { name: 'proof', maxCount: 1 },
+      ],
+      {
+        storage: memoryStorage(),
+        limits: { fileSize: UPLOAD_MEDIA_MAX_BYTES },
+      },
+    ),
   )
   submitDeliverable(
     @CurrentUser() user: User,
     @Param('id') id: string,
     @Body() dto: SubmitDeliverableDto,
-    @UploadedFile() proof?: Express.Multer.File,
+    @UploadedFiles()
+    files?: { file?: Express.Multer.File[]; proof?: Express.Multer.File[] },
   ) {
-    return this.dealsService.submitDeliverable(user, id, dto, proof);
+    return this.dealsService.submitDeliverable(user, id, dto, files);
   }
 
   @Patch(':id')
   @ApiOperation({
     summary:
-      'Update deal status: brand COMPLETED / REVISION_REQUESTED / CANCELLED; influencer CANCELLED',
+      'Update deal status: brand COMPLETED / REVISION_REQUESTED / CANCELLED (before content); influencer CANCELLED',
   })
   @ApiOkResponse({ type: DealResponse })
   updateStatus(

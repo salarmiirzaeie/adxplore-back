@@ -5,19 +5,26 @@ import {
   Param,
   Post,
   Query,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
   ApiCreatedResponse,
   ApiOkResponse,
   ApiOperation,
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
+import { memoryStorage } from 'multer';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import type { User } from '../generated/prisma/client';
+import { UPLOAD_MEDIA_MAX_BYTES } from '../uploads/uploads.service';
 import { ChatGateway } from './chat.gateway';
 import { ChatService } from './chat.service';
 import { ChatMessageResponse, ConversationResponse } from './dto/chat-response';
@@ -74,14 +81,34 @@ export class ChatController {
   }
 
   @Post(':id/messages')
-  @ApiOperation({ summary: 'Send a message (REST; Socket.io also supported)' })
+  @ApiOperation({
+    summary:
+      'Send a message (REST). JSON { body } or multipart body? + file (image/video). Socket.io still supports text.',
+  })
+  @ApiConsumes('multipart/form-data', 'application/json')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        body: { type: 'string', example: 'سلام' },
+        file: { type: 'string', format: 'binary' },
+      },
+    },
+  })
   @ApiCreatedResponse({ type: ChatMessageResponse })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: { fileSize: UPLOAD_MEDIA_MAX_BYTES },
+    }),
+  )
   async send(
     @CurrentUser() user: User,
     @Param('id') id: string,
     @Body() dto: SendMessageDto,
+    @UploadedFile() file?: Express.Multer.File,
   ) {
-    const message = await this.chat.sendMessage(user, id, dto.body);
+    const message = await this.chat.sendMessage(user, id, dto.body, file);
     this.gateway.emitNewMessage(id, message);
     return message;
   }

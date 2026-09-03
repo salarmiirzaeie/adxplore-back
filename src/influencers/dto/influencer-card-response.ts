@@ -17,6 +17,9 @@ export class InfluencerCardResponse {
   @ApiProperty({ enum: BrandCategory })
   category!: BrandCategory;
 
+  @ApiProperty({ enum: BrandCategory, isArray: true })
+  categories!: BrandCategory[];
+
   @ApiProperty({ example: 'کرج' })
   city!: string;
 
@@ -25,4 +28,10 @@ export class InfluencerCardResponse {
 
   @ApiProperty({ enum: FollowerRange })
   followerRange!: FollowerRange;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    example: 'تولیدکننده محتوای زیبایی و لایف‌استایل.',
+  })
+  bio!: string | null;
 }

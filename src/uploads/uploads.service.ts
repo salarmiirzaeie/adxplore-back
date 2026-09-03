@@ -4,9 +4,24 @@ import { randomUUID } from 'crypto';
 import { existsSync, mkdirSync, unlinkSync, writeFileSync } from 'fs';
 import { join } from 'path';
 
-export const UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
-export const UPLOAD_MIME = new Set(['image/jpeg', 'image/png', 'image/webp']);
+export const UPLOAD_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+export const UPLOAD_VIDEO_MAX_BYTES = 50 * 1024 * 1024;
+/** Multer ceiling for mixed image/video endpoints */
+export const UPLOAD_MEDIA_MAX_BYTES = UPLOAD_VIDEO_MAX_BYTES;
+/** @deprecated Use UPLOAD_IMAGE_MAX_BYTES */
+export const UPLOAD_MAX_BYTES = UPLOAD_IMAGE_MAX_BYTES;
+
+export const IMAGE_MIME = new Set(['image/jpeg', 'image/png', 'image/webp']);
+export const VIDEO_MIME = new Set([
+  'video/mp4',
+  'video/webm',
+  'video/quicktime',
+]);
+export const UPLOAD_MIME = IMAGE_MIME;
 export const CAMPAIGN_MAX_IMAGES = 8;
+
+export type UploadFolder = 'avatars' | 'campaigns' | 'deals' | 'chat';
+export type MediaKind = 'IMAGE' | 'VIDEO';
 
 @Injectable()
 export class UploadsService {
@@ -17,7 +32,7 @@ export class UploadsService {
     if (!existsSync(this.rootDir)) {
       mkdirSync(this.rootDir, { recursive: true });
     }
-    for (const sub of ['avatars', 'campaigns', 'deals'] as const) {
+    for (const sub of ['avatars', 'campaigns', 'deals', 'chat'] as const) {
       const dir = join(this.rootDir, sub);
       if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
     }
@@ -47,26 +62,59 @@ export class UploadsService {
     if (!file) {
       throw new BadRequestException('فایل تصویر الزامی است');
     }
-    if (!UPLOAD_MIME.has(file.mimetype)) {
+    if (!IMAGE_MIME.has(file.mimetype)) {
       throw new BadRequestException('فقط JPEG، PNG یا WebP مجاز است');
     }
-    if (file.size > UPLOAD_MAX_BYTES) {
+    if (file.size > UPLOAD_IMAGE_MAX_BYTES) {
       throw new BadRequestException('حجم تصویر حداکثر ۵ مگابایت باشد');
     }
   }
 
-  saveImage(
-    folder: 'avatars' | 'campaigns' | 'deals',
-    file: Express.Multer.File,
-  ): string {
+  assertMediaFile(file?: Express.Multer.File): MediaKind {
+    if (!file) {
+      throw new BadRequestException('فایل الزامی است');
+    }
+    if (IMAGE_MIME.has(file.mimetype)) {
+      if (file.size > UPLOAD_IMAGE_MAX_BYTES) {
+        throw new BadRequestException('حجم تصویر حداکثر ۵ مگابایت باشد');
+      }
+      return 'IMAGE';
+    }
+    if (VIDEO_MIME.has(file.mimetype)) {
+      if (file.size > UPLOAD_VIDEO_MAX_BYTES) {
+        throw new BadRequestException('حجم ویدیو حداکثر ۵۰ مگابایت باشد');
+      }
+      return 'VIDEO';
+    }
+    throw new BadRequestException(
+      'فقط تصویر (JPEG، PNG، WebP) یا ویدیو (MP4، WebM، MOV) مجاز است',
+    );
+  }
+
+  private extForMime(mimetype: string): string {
+    if (mimetype === 'image/png') return '.png';
+    if (mimetype === 'image/webp') return '.webp';
+    if (mimetype === 'video/webm') return '.webm';
+    if (mimetype === 'video/quicktime') return '.mov';
+    if (mimetype === 'video/mp4') return '.mp4';
+    return '.jpg';
+  }
+
+  saveImage(folder: UploadFolder, file: Express.Multer.File): string {
     this.assertImageFile(file);
-    const ext =
-      file.mimetype === 'image/png'
-        ? '.png'
-        : file.mimetype === 'image/webp'
-          ? '.webp'
-          : '.jpg';
-    const relative = `${folder}/${randomUUID()}${ext}`;
+    return this.writeFile(folder, file);
+  }
+
+  saveMedia(
+    folder: UploadFolder,
+    file: Express.Multer.File,
+  ): { relative: string; kind: MediaKind } {
+    const kind = this.assertMediaFile(file);
+    return { relative: this.writeFile(folder, file), kind };
+  }
+
+  private writeFile(folder: UploadFolder, file: Express.Multer.File): string {
+    const relative = `${folder}/${randomUUID()}${this.extForMime(file.mimetype)}`;
     writeFileSync(join(this.rootDir, relative), file.buffer);
     return relative;
   }

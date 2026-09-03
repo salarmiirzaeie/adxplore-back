@@ -169,6 +169,7 @@ export class AuthService {
         city: user.city,
         province: user.province,
         website: user.website,
+        bio: user.bio,
         goal: user.goal,
         businessSize: user.businessSize,
         followerRange: user.followerRange,

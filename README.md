@@ -55,6 +55,7 @@ Require `Authorization: Bearer <accessToken>`.
 |--------|------|-------------|
 | `GET` | `/v1/users/me` | Current user |
 | `PATCH` | `/v1/users/me` | Update profile fields |
+| `GET` | `/v1/users/:id/profile` | Public brand or influencer profile (no phone) |
 
 Brand / influencer profile fields (all optional on PATCH; role-specific required sets enforced server-side):
 
@@ -64,11 +65,20 @@ Brand / influencer profile fields (all optional on PATCH; role-specific required
   "category": "BEAUTY",
   "city": "تهران",
   "website": "@sara",
+  "bio": "تولیدکننده محتوای زیبایی و لایف‌استایل.",
   "followerRange": "FROM_10K_50K",
   "goal": "AWARENESS",
   "businessSize": "SME"
 }
 ```
+
+`bio` is a short about-me / about-the-brand textarea (max 1000 chars) collected at onboarding and shown on public profiles. It is **not** required to finish onboarding.
+
+`GET /v1/users/:id/profile` is the profile page API for the other party. Use it from campaign chat (`peerId` on the conversation), campaign browse (`brand.id`), or influencer browse. Access:
+
+- Brands can open approved influencer profiles
+- Influencers can open a brand that has an `OPEN` campaign, or anyone they already have an invitation/offer/chat with
+- Phone and approval internals are never returned
 
 Enums: `BrandCategory`, `BrandGoal`, `BusinessSize`, `FollowerRange` — see Swagger.
 
@@ -95,14 +105,17 @@ Client routing from `GET /v1/users/me` (and OTP verify) fields:
 
 ## Campaigns
 
-Require `Authorization: Bearer <accessToken>` and `role = BRAND`.
+Require `Authorization: Bearer <accessToken>`. Brand owns CRUD; influencers browse `OPEN` campaigns.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `POST` | `/v1/campaigns` | Create campaign |
-| `GET` | `/v1/campaigns` | List my campaigns |
-| `GET` | `/v1/campaigns/:id` | Get one campaign I own |
-| `PATCH` | `/v1/campaigns/:id` | Update campaign (incl. status) |
+| `POST` | `/v1/campaigns` | Create campaign (brand) |
+| `GET` | `/v1/campaigns` | List my campaigns (brand) |
+| `GET` | `/v1/campaigns/browse` | Browse `OPEN` campaigns (influencer) |
+| `GET` | `/v1/campaigns/:id` | Brand owner, or influencer if `OPEN` |
+| `PATCH` | `/v1/campaigns/:id` | Update campaign (brand) |
+
+Campaign responses include a `brand` card (`id`, `name`, `photoUrl`, `website`, `bio`, categories, city, `goal`, `businessSize`) so the influencer can open the brand profile.
 
 ```json
 {
@@ -130,7 +143,7 @@ Require `Authorization: Bearer <accessToken>` and `role = BRAND`.
 
 Query params (optional): `category`, `city`, `followerRange`.
 
-Phone is never exposed in these responses.
+Phone is never exposed in these responses. Cards include `bio`.
 
 ## Marketplace flow (invitations → offers)
 
