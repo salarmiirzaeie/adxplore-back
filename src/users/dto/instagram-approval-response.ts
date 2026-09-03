@@ -125,6 +125,9 @@ export class InstagramApprovalResponse {
   @ApiProperty()
   canAccessPanel!: boolean;
 
+  @ApiProperty()
+  canSendOffers!: boolean;
+
   @ApiPropertyOptional({ example: 'ADX-K7M2P', nullable: true })
   verifyCode!: string | null;
 

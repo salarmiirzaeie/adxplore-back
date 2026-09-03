@@ -70,9 +70,15 @@ export class AuthUserResponse {
   approvalStatus!: InfluencerApprovalStatus | null;
 
   @ApiProperty({
-    description: 'True when the user may use marketplace panel APIs',
+    description:
+      'True after follow + DM (or if already approved). Panel browse is allowed; sending offers needs canSendOffers.',
   })
   canAccessPanel!: boolean;
+
+  @ApiProperty({
+    description: 'True only after admin approval. Required to send offers.',
+  })
+  canSendOffers!: boolean;
 
   @ApiProperty({
     enum: ['ONBOARDING', 'INSTAGRAM_APPROVAL', 'PANEL'],
@@ -151,6 +157,9 @@ export class UserProfileResponse {
 
   @ApiProperty()
   canAccessPanel!: boolean;
+
+  @ApiProperty()
+  canSendOffers!: boolean;
 
   @ApiProperty({
     enum: ['ONBOARDING', 'INSTAGRAM_APPROVAL', 'PANEL'],

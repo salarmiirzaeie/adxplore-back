@@ -74,23 +74,24 @@ Enums: `BrandCategory`, `BrandGoal`, `BusinessSize`, `FollowerRange` — see Swa
 
 ### Influencer Instagram approval (PWA / TWA)
 
-After OTP signup and profile onboarding, new influencers cannot use the panel until we confirm they **followed** [@adxplore.ir](https://www.instagram.com/adxplore.ir/) and **DMed a unique code**.
+After OTP signup and profile onboarding, the influencer follows [@adxplore.ir](https://www.instagram.com/adxplore.ir/) and DMs a unique code, then can **browse the panel**. They cannot **send offers** (and are hidden from brands) until an admin approves.
 
 Client routing from `GET /v1/users/me` (and OTP verify) fields:
 
-- `nextScreen`: `ONBOARDING` → `INSTAGRAM_APPROVAL` → `PANEL`
-- `canAccessPanel`: `false` until approved
+- `nextScreen`: `ONBOARDING` → `INSTAGRAM_APPROVAL` → `PANEL` (panel after they tap «پیام را فرستادم»)
+- `canAccessPanel`: `true` after follow + DM confirm
+- `canSendOffers`: `true` only after admin approval
 - `approvalStatus`: `PENDING` | `APPROVED` | `REJECTED` (influencers only)
 
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/v1/users/me/instagram-approval` | Copy-ready DM message, verify code, follow/DM deep links, step UI |
-| `POST` | `/v1/users/me/instagram-approval/confirm-sent` | User tapped «پیام را فرستادم» |
+| `POST` | `/v1/users/me/instagram-approval/confirm-sent` | User tapped «پیام را فرستادم» — unlocks panel browse |
 | `GET` | `/v1/admin/influencers?status=PENDING` | Admin queue (search by name / phone / handle / code) |
-| `POST` | `/v1/admin/influencers/:id/approve` | Unlock panel after checking IG follow + DM |
+| `POST` | `/v1/admin/influencers/:id/approve` | Unlock sending offers + brand discovery |
 | `POST` | `/v1/admin/influencers/:id/reject` | Optional `{ "reason" }` — user can follow/DM again |
 
-Poll `GET /v1/users/me` or the approval endpoint every `pollIntervalSeconds` (15) while waiting. Marketplace browse/offers return `403` with `code: INFLUENCER_NOT_APPROVED` until approved. Existing influencers were backfilled as `APPROVED`.
+`POST /v1/offers` returns `403` with `code: INFLUENCER_NOT_APPROVED` until approved. Existing influencers were backfilled as `APPROVED`.
 
 ## Campaigns
 

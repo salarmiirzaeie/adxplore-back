@@ -24,7 +24,6 @@ import { PrismaService } from '../prisma/prisma.service';
 import { UploadsService } from '../uploads/uploads.service';
 import { SubmitDeliverableDto } from './dto/submit-deliverable.dto';
 import { UpdateDealStatusDto } from './dto/update-deal-status.dto';
-import { assertInfluencerApproved } from '../common/influencer-approval';
 
 const dealInclude = {
   campaign: { select: dealCampaignSelect },
@@ -241,7 +240,6 @@ export class DealsService {
     if (user.id !== deal.influencerId) {
       throw new ForbiddenException('فقط اینفلوئنسر می‌تواند تحویل را ثبت کند');
     }
-    assertInfluencerApproved(user);
     if (
       deal.status !== DealStatus.IN_PROGRESS &&
       deal.status !== DealStatus.REVISION_REQUESTED

@@ -17,6 +17,7 @@ import {
 import { resolveProfileLocation } from '../common/cities';
 import {
   influencerCanAccessPanel,
+  influencerCanSendOffers,
   influencerNextScreen,
   isInfluencerProfileComplete,
 } from '../common/influencer-approval';
@@ -62,6 +63,7 @@ export class UsersService {
       followerRange: user.followerRange,
       approvalStatus: user.approvalStatus,
       canAccessPanel: influencerCanAccessPanel(user),
+      canSendOffers: influencerCanSendOffers(user),
       nextScreen: influencerNextScreen(user),
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,

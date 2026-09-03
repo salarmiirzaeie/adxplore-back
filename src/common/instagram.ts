@@ -1,6 +1,10 @@
 import { randomBytes } from 'crypto';
 import type { User } from '../generated/prisma/client';
-import { isInfluencerProfileComplete } from './influencer-approval';
+import {
+  influencerCanAccessPanel,
+  influencerCanSendOffers,
+  isInfluencerProfileComplete,
+} from './influencer-approval';
 
 export const DEFAULT_INSTAGRAM_PAGE_USERNAME = 'adxplore.ir';
 
@@ -113,26 +117,30 @@ export function buildInstagramApprovalPayload(opts: {
             ? 'منتظر تأیید ما بمانید'
             : uiStatus === 'ONBOARDING'
               ? 'ابتدا پروفایل را کامل کنید'
-              : 'برای ورود به پنل تأیید شوید',
+              : 'برای ورود به پنل، پیج را فالو کنید و کد را دایرکت بفرستید',
     subtitle:
       uiStatus === 'APPROVED'
-        ? 'حالا می‌توانید کمپین‌ها را ببینید و پیشنهاد بفرستید.'
+        ? 'حساب تأیید شد. می‌توانید کمپین‌ها را ببینید و پیشنهاد بفرستید.'
         : uiStatus === 'REJECTED'
           ? user.rejectionReason?.trim() ||
             'پیج @adxplore.ir را فالو کنید، همان کد را دوباره دایرکت بفرستید و منتظر بررسی بمانید.'
           : uiStatus === 'WAITING_REVIEW'
-            ? 'دایرکت و فالو را بررسی می‌کنیم. معمولاً تا چند ساعت طول می‌کشد. این صفحه را باز نگه دارید یا بعداً برگردید.'
+            ? 'می‌توانید وارد پنل شوید و کمپین‌ها را ببینید. ارسال پیشنهاد بعد از تأیید ادمین فعال می‌شود.'
             : uiStatus === 'ONBOARDING'
               ? 'پس از تکمیل پروفایل، یک کد برای دایرکت اینستاگرام می‌گیرید.'
-              : `پیج @${page.username} را فالو کنید، پیام زیر را کپی کنید و در دایرکت بفرستید.`,
-    waitingHint: 'پس از ارسال دایرکت، دکمه «پیام را فرستادم» را بزنید.',
+              : `پیج @${page.username} را فالو کنید، پیام زیر را کپی کنید و در دایرکت بفرستید. بعد از آن وارد پنل می‌شوید.`,
+    waitingHint:
+      uiStatus === 'WAITING_REVIEW'
+        ? 'ارسال پیشنهاد تا تأیید ادمین ممکن نیست.'
+        : 'پس از ارسال دایرکت، دکمه «پیام را فرستادم» را بزنید تا وارد پنل شوید.',
   };
 
   return {
     approvalStatus,
     uiStatus,
     onboardingComplete: isInfluencerProfileComplete(user),
-    canAccessPanel: approvalStatus === 'APPROVED',
+    canAccessPanel: influencerCanAccessPanel(user),
+    canSendOffers: influencerCanSendOffers(user),
     verifyCode,
     dmMessage,
     influencerInstagram: influencerHandle,

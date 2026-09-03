@@ -15,6 +15,7 @@ import { generateOtpCode, normalizeIranPhone } from '../common/phone.util';
 import { parseCategories, primaryCategory } from '../common/categories';
 import {
   influencerCanAccessPanel,
+  influencerCanSendOffers,
   influencerNextScreen,
 } from '../common/influencer-approval';
 import { JwtPayload } from './jwt-payload';
@@ -174,6 +175,7 @@ export class AuthService {
         photoUrl: user.photoUrl,
         approvalStatus: user.approvalStatus,
         canAccessPanel: influencerCanAccessPanel(user),
+        canSendOffers: influencerCanSendOffers(user),
         nextScreen: influencerNextScreen(user),
       },
     };

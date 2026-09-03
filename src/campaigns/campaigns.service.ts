@@ -35,7 +35,6 @@ import {
 import { BrowseCampaignsQueryDto } from './dto/browse-campaigns-query.dto';
 import { CreateCampaignDto } from './dto/create-campaign.dto';
 import { UpdateCampaignDto } from './dto/update-campaign.dto';
-import { assertInfluencerApproved } from '../common/influencer-approval';
 
 type CampaignWithImages = Campaign & { images: CampaignImage[] };
 
@@ -193,7 +192,6 @@ export class CampaignsService {
         'فقط اینفلوئنسرها می‌توانند کمپین‌ها را مرور کنند',
       );
     }
-    assertInfluencerApproved(user);
 
     const where: Prisma.CampaignWhereInput = {
       status: CampaignStatus.OPEN,
@@ -283,7 +281,6 @@ export class CampaignsService {
     }
 
     if (user.role === UserRole.INFLUENCER) {
-      assertInfluencerApproved(user);
       if (campaign.status !== CampaignStatus.OPEN) {
         throw new NotFoundException('کمپین پیدا نشد');
       }

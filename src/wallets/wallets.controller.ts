@@ -23,7 +23,6 @@ import {
 } from '../generated/prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import { WalletsService } from './wallets.service';
-import { assertInfluencerApproved } from '../common/influencer-approval';
 import { UpsertBankCardDto } from './dto/upsert-bank-card.dto';
 import { WithdrawDto } from './dto/withdraw.dto';
 import {
@@ -81,7 +80,6 @@ export class WalletsController {
     if (user.role !== UserRole.INFLUENCER) {
       throw new BadRequestException('فقط اینفلوئنسر می‌تواند برداشت کند');
     }
-    assertInfluencerApproved(user);
     const result = await this.wallets.requestWithdraw(user.id, dto.amountToman);
     await this.notifications.create(
       user.id,
