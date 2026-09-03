@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import {
   CampaignStatus,
+  InfluencerApprovalStatus,
   InvitationStatus,
   NotificationType,
   UserRole,
@@ -16,10 +17,7 @@ import {
   mapPartyCategories,
   parseCategories,
 } from '../common/categories';
-import {
-  invitationCampaignSelect,
-  partySelect,
-} from '../common/party-select';
+import { invitationCampaignSelect, partySelect } from '../common/party-select';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
@@ -125,7 +123,8 @@ export class InvitationsService {
       !parseCategories(influencer.categories, influencer.category).length ||
       !influencer.city?.trim() ||
       !influencer.province?.trim() ||
-      !influencer.followerRange
+      !influencer.followerRange ||
+      influencer.approvalStatus !== InfluencerApprovalStatus.APPROVED
     ) {
       throw new NotFoundException('اینفلوئنسر پیدا نشد');
     }
@@ -193,7 +192,10 @@ export class InvitationsService {
     return this.toPublic(invitation);
   }
 
-  async createBulk(user: User, dto: { campaignId: string; influencerIds: string[]; message?: string }) {
+  async createBulk(
+    user: User,
+    dto: { campaignId: string; influencerIds: string[]; message?: string },
+  ) {
     const uniqueIds = [...new Set(dto.influencerIds.filter(Boolean))];
     const created = [];
     const skipped: string[] = [];
@@ -254,10 +256,7 @@ export class InvitationsService {
     if (!invitation) {
       throw new NotFoundException('دعوت پیدا نشد');
     }
-    if (
-      invitation.brandId !== user.id &&
-      invitation.influencerId !== user.id
-    ) {
+    if (invitation.brandId !== user.id && invitation.influencerId !== user.id) {
       throw new ForbiddenException('دسترسی به این دعوت ندارید');
     }
     return this.toPublic(invitation);

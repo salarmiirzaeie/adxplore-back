@@ -15,10 +15,7 @@ import {
   mapCampaignCategories,
   mapPartyCategories,
 } from '../common/categories';
-import {
-  dealCampaignSelect,
-  partySelect,
-} from '../common/party-select';
+import { dealCampaignSelect, partySelect } from '../common/party-select';
 import { ChatGateway } from '../chat/chat.gateway';
 import { ChatService } from '../chat/chat.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -27,6 +24,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { UploadsService } from '../uploads/uploads.service';
 import { SubmitDeliverableDto } from './dto/submit-deliverable.dto';
 import { UpdateDealStatusDto } from './dto/update-deal-status.dto';
+import { assertInfluencerApproved } from '../common/influencer-approval';
 
 const dealInclude = {
   campaign: { select: dealCampaignSelect },
@@ -50,15 +48,15 @@ type DealWithRelations = {
   completedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
-    campaign: {
-      id: string;
-      title: string;
-      deliverable: string;
-      deliverables?: unknown;
-      category?: import('../generated/prisma/client').BrandCategory | null;
-      categories: unknown;
-      city: string;
-      province: string | null;
+  campaign: {
+    id: string;
+    title: string;
+    deliverable: string;
+    deliverables?: unknown;
+    category?: import('../generated/prisma/client').BrandCategory | null;
+    categories: unknown;
+    city: string;
+    province: string | null;
     status: string;
     brief: string;
     budgetMin: number | null;
@@ -243,6 +241,7 @@ export class DealsService {
     if (user.id !== deal.influencerId) {
       throw new ForbiddenException('فقط اینفلوئنسر می‌تواند تحویل را ثبت کند');
     }
+    assertInfluencerApproved(user);
     if (
       deal.status !== DealStatus.IN_PROGRESS &&
       deal.status !== DealStatus.REVISION_REQUESTED
@@ -373,7 +372,9 @@ export class DealsService {
       }
       const feedback = dto.brandFeedback?.trim();
       if (!feedback) {
-        throw new BadRequestException('بازخورد برند برای درخواست اصلاح الزامی است');
+        throw new BadRequestException(
+          'بازخورد برند برای درخواست اصلاح الزامی است',
+        );
       }
 
       const updated = await this.prisma.deal.update({

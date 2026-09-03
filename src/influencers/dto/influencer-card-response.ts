@@ -1,8 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import {
-  BrandCategory,
-  FollowerRange,
-} from '../../generated/prisma/client';
+import { BrandCategory, FollowerRange } from '../../generated/prisma/client';
 
 export class InfluencerCardResponse {
   @ApiProperty()

@@ -144,8 +144,7 @@ export class ChatService {
 
     return Promise.all(
       conversations.map(async (c) => {
-        const peer =
-          c.brandId === user.id ? c.offer.influencer : c.offer.brand;
+        const peer = c.brandId === user.id ? c.offer.influencer : c.offer.brand;
         const unreadCount = await this.prisma.message.count({
           where: {
             conversationId: c.id,
@@ -236,19 +235,14 @@ export class ChatService {
       where: { conversationId },
       orderBy: { createdAt: 'desc' },
       take,
-      ...(opts?.cursor
-        ? { cursor: { id: opts.cursor }, skip: 1 }
-        : {}),
+      ...(opts?.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
     });
 
     return messages.reverse().map((m) => this.toMessage(m));
   }
 
   async sendMessage(user: User, conversationId: string, body: string) {
-    const conversation = await this.assertParticipant(
-      conversationId,
-      user.id,
-    );
+    const conversation = await this.assertParticipant(conversationId, user.id);
     const text = body.trim();
     if (!text) {
       throw new BadRequestException('پیام خالی است');
@@ -307,8 +301,7 @@ export class ChatService {
         kind: params.kind,
         body: params.body,
         metadata: (params.metadata ?? undefined) as
-          | Prisma.InputJsonValue
-          | undefined,
+          Prisma.InputJsonValue | undefined,
       },
     });
 

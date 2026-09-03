@@ -3,6 +3,7 @@ import {
   Body,
   Controller,
   Get,
+  Put,
   Post,
   Query,
   UseGuards,
@@ -11,11 +12,8 @@ import {
   ApiBearerAuth,
   ApiOkResponse,
   ApiOperation,
-  ApiProperty,
   ApiTags,
 } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { IsInt, Min } from 'class-validator';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import {
@@ -25,31 +23,15 @@ import {
 } from '../generated/prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import { WalletsService } from './wallets.service';
-
-class WithdrawDto {
-  @ApiProperty({ example: 500_000 })
-  @Type(() => Number)
-  @IsInt()
-  @Min(10_000)
-  amountToman!: number;
-}
-
-class WalletResponseDto {
-  @ApiProperty()
-  id!: string;
-
-  @ApiProperty()
-  userId!: string;
-
-  @ApiProperty()
-  availableToman!: number;
-
-  @ApiProperty()
-  heldToman!: number;
-
-  @ApiProperty()
-  totalToman!: number;
-}
+import { assertInfluencerApproved } from '../common/influencer-approval';
+import { UpsertBankCardDto } from './dto/upsert-bank-card.dto';
+import { WithdrawDto } from './dto/withdraw.dto';
+import {
+  BankCardEnvelopeResponse,
+  BankCardResponse,
+  WalletResponse,
+  WithdrawResponse,
+} from './dto/wallet-response';
 
 @ApiTags('wallets')
 @ApiBearerAuth('access-token')
@@ -62,10 +44,24 @@ export class WalletsController {
   ) {}
 
   @Get('me')
-  @ApiOperation({ summary: 'Get my wallet balances' })
-  @ApiOkResponse({ type: WalletResponseDto })
+  @ApiOperation({ summary: 'Get my wallet balances and saved bank card' })
+  @ApiOkResponse({ type: WalletResponse })
   me(@CurrentUser() user: User) {
     return this.wallets.getMine(user.id);
+  }
+
+  @Get('me/bank-card')
+  @ApiOperation({ summary: 'Get my saved bank card (null if none)' })
+  @ApiOkResponse({ type: BankCardEnvelopeResponse })
+  getBankCard(@CurrentUser() user: User) {
+    return this.wallets.getBankCard(user.id);
+  }
+
+  @Put('me/bank-card')
+  @ApiOperation({ summary: 'Save or edit my bank card for payouts' })
+  @ApiOkResponse({ type: BankCardResponse })
+  upsertBankCard(@CurrentUser() user: User, @Body() dto: UpsertBankCardDto) {
+    return this.wallets.upsertBankCard(user.id, dto);
   }
 
   @Get('me/transactions')
@@ -78,12 +74,14 @@ export class WalletsController {
   @Post('me/withdraw')
   @ApiOperation({
     summary:
-      'Influencer withdraw request (available → held until manually paid out)',
+      'Influencer payout request (requires saved bank card; available → held until paid out)',
   })
+  @ApiOkResponse({ type: WithdrawResponse })
   async withdraw(@CurrentUser() user: User, @Body() dto: WithdrawDto) {
     if (user.role !== UserRole.INFLUENCER) {
       throw new BadRequestException('فقط اینفلوئنسر می‌تواند برداشت کند');
     }
+    assertInfluencerApproved(user);
     const result = await this.wallets.requestWithdraw(user.id, dto.amountToman);
     await this.notifications.create(
       user.id,

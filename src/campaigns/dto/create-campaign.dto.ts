@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import {
   ArrayMinSize,
   IsArray,
@@ -50,7 +51,11 @@ export class CreateCampaignDto {
   @IsEnum(BrandCategory)
   category?: BrandCategory;
 
-  @ApiProperty({ example: 'کرج', maxLength: 80, description: 'City name, or کل ایران for nationwide' })
+  @ApiProperty({
+    example: 'کرج',
+    maxLength: 80,
+    description: 'City name, or کل ایران for nationwide',
+  })
   @IsString()
   @MinLength(2)
   @MaxLength(80)
@@ -85,19 +90,41 @@ export class CreateCampaignDto {
   @IsEnum(DeliverableType)
   deliverable?: DeliverableType;
 
-  @ApiPropertyOptional({ example: 5_000_000, description: 'Budget min in toman' })
+  @ApiPropertyOptional({
+    example: 5_000_000,
+    description: 'Budget min in toman',
+    nullable: true,
+  })
   @IsOptional()
+  @Transform(({ obj, key }) => {
+    if (!Object.prototype.hasOwnProperty.call(obj, key)) return undefined;
+    const value = obj[key];
+    if (value === null || value === '') return null;
+    return value;
+  })
+  @ValidateIf((_, value) => value !== null && value !== undefined)
   @IsInt()
   @Min(0)
   @Max(10_000_000_000)
-  budgetMin?: number;
+  budgetMin?: number | null;
 
-  @ApiPropertyOptional({ example: 15_000_000, description: 'Budget max in toman' })
+  @ApiPropertyOptional({
+    example: 15_000_000,
+    description: 'Budget max in toman',
+    nullable: true,
+  })
   @IsOptional()
+  @Transform(({ obj, key }) => {
+    if (!Object.prototype.hasOwnProperty.call(obj, key)) return undefined;
+    const value = obj[key];
+    if (value === null || value === '') return null;
+    return value;
+  })
+  @ValidateIf((_, value) => value !== null && value !== undefined)
   @IsInt()
   @Min(0)
   @Max(10_000_000_000)
-  budgetMax?: number;
+  budgetMax?: number | null;
 
   @ApiPropertyOptional({
     enum: CampaignStatus,

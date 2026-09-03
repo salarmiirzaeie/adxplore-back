@@ -115,8 +115,7 @@ export class ZarinpalService {
     });
 
     const code = Number(json?.data?.code ?? json?.errors?.code ?? 0);
-    const refId =
-      json?.data?.ref_id != null ? String(json.data.ref_id) : '';
+    const refId = json?.data?.ref_id != null ? String(json.data.ref_id) : '';
     const message =
       (json?.data?.message as string | undefined) ||
       (json?.errors?.message as string | undefined);
@@ -148,7 +147,9 @@ export class ZarinpalService {
       try {
         return JSON.parse(text);
       } catch {
-        this.logger.error(`Invalid ZarinPal JSON from ${url}: ${text.slice(0, 200)}`);
+        this.logger.error(
+          `Invalid ZarinPal JSON from ${url}: ${text.slice(0, 200)}`,
+        );
         return { errors: { message: 'پاسخ نامعتبر از زرین‌پال' } };
       }
     } catch (err) {

@@ -1,8 +1,5 @@
 import { BrandCategory } from '../generated/prisma/client';
-import {
-  parseDeliverables,
-  primaryDeliverable,
-} from './deliverables';
+import { parseDeliverables, primaryDeliverable } from './deliverables';
 
 const ALL = new Set<string>(Object.values(BrandCategory));
 

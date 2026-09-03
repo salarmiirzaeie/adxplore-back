@@ -4,6 +4,7 @@ import {
   BrandGoal,
   BusinessSize,
   FollowerRange,
+  InfluencerApprovalStatus,
   UserRole,
 } from '../generated/prisma/client';
 
@@ -46,7 +47,10 @@ export class AuthUserResponse {
   @ApiPropertyOptional({ example: 'البرز', nullable: true })
   province!: string | null;
 
-  @ApiPropertyOptional({ example: 'https://instagram.com/brand', nullable: true })
+  @ApiPropertyOptional({
+    example: 'https://instagram.com/brand',
+    nullable: true,
+  })
   website!: string | null;
 
   @ApiPropertyOptional({ enum: BrandGoal, nullable: true })
@@ -57,6 +61,25 @@ export class AuthUserResponse {
 
   @ApiPropertyOptional({ enum: FollowerRange, nullable: true })
   followerRange!: FollowerRange | null;
+
+  @ApiPropertyOptional({
+    enum: InfluencerApprovalStatus,
+    nullable: true,
+    description: 'Influencers only. Null for brand/admin.',
+  })
+  approvalStatus!: InfluencerApprovalStatus | null;
+
+  @ApiProperty({
+    description: 'True when the user may use marketplace panel APIs',
+  })
+  canAccessPanel!: boolean;
+
+  @ApiProperty({
+    enum: ['ONBOARDING', 'INSTAGRAM_APPROVAL', 'PANEL'],
+    description:
+      'Where the influencer PWA/TWA should route after auth. Brands/admins are always PANEL.',
+  })
+  nextScreen!: 'ONBOARDING' | 'INSTAGRAM_APPROVAL' | 'PANEL';
 }
 
 export class VerifyOtpResponse {
@@ -104,7 +127,10 @@ export class UserProfileResponse {
   @ApiPropertyOptional({ example: 'البرز', nullable: true })
   province!: string | null;
 
-  @ApiPropertyOptional({ example: 'https://instagram.com/brand', nullable: true })
+  @ApiPropertyOptional({
+    example: 'https://instagram.com/brand',
+    nullable: true,
+  })
   website!: string | null;
 
   @ApiPropertyOptional({ enum: BrandGoal, nullable: true })
@@ -115,6 +141,21 @@ export class UserProfileResponse {
 
   @ApiPropertyOptional({ enum: FollowerRange, nullable: true })
   followerRange!: FollowerRange | null;
+
+  @ApiPropertyOptional({
+    enum: InfluencerApprovalStatus,
+    nullable: true,
+    description: 'Influencers only. Null for brand/admin.',
+  })
+  approvalStatus!: InfluencerApprovalStatus | null;
+
+  @ApiProperty()
+  canAccessPanel!: boolean;
+
+  @ApiProperty({
+    enum: ['ONBOARDING', 'INSTAGRAM_APPROVAL', 'PANEL'],
+  })
+  nextScreen!: 'ONBOARDING' | 'INSTAGRAM_APPROVAL' | 'PANEL';
 
   @ApiProperty()
   createdAt!: Date;

@@ -5,28 +5,68 @@ import {
 } from '@nestjs/common';
 import {
   WalletTxType,
+  type BankCard,
   type Wallet,
   type WalletTransaction,
 } from '../generated/prisma/client';
+import {
+  parseBankCardInput,
+  toBankCardPublic,
+  type BankCardPublic,
+  type ParsedBankCard,
+} from '../common/iran-bank-card';
 import { PrismaService } from '../prisma/prisma.service';
+import type { UpsertBankCardDto } from './dto/upsert-bank-card.dto';
+
+type WalletWithCard = Wallet & { bankCard: BankCard | null };
+
+type PayoutSnapshot = ParsedBankCard;
 
 @Injectable()
 export class WalletsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  toPublic(wallet: Wallet) {
+  toBankCardPublic(card: BankCard | PayoutSnapshot): BankCardPublic {
+    return toBankCardPublic(card);
+  }
+
+  toPublic(wallet: Wallet & { bankCard?: BankCard | null }) {
+    const bankCard = wallet.bankCard
+      ? this.toBankCardPublic(wallet.bankCard)
+      : null;
     return {
       id: wallet.id,
       userId: wallet.userId,
       availableToman: wallet.availableToman,
       heldToman: wallet.heldToman,
       totalToman: wallet.availableToman + wallet.heldToman,
+      hasBankCard: Boolean(wallet.bankCard),
+      bankCard,
       createdAt: wallet.createdAt,
       updatedAt: wallet.updatedAt,
     };
   }
 
-  toTxPublic(tx: WalletTransaction) {
+  toTxPublic(
+    tx: WalletTransaction & {
+      payoutHolderName?: string | null;
+      payoutCardNumber?: string | null;
+      payoutSheba?: string | null;
+      payoutBankName?: string | null;
+    },
+  ) {
+    const bankCard =
+      tx.payoutHolderName &&
+      tx.payoutCardNumber &&
+      tx.payoutSheba &&
+      tx.payoutBankName
+        ? this.toBankCardPublic({
+            holderName: tx.payoutHolderName,
+            cardNumber: tx.payoutCardNumber,
+            sheba: tx.payoutSheba,
+            bankName: tx.payoutBankName,
+          })
+        : null;
     return {
       id: tx.id,
       walletId: tx.walletId,
@@ -37,20 +77,56 @@ export class WalletsService {
       dealId: tx.dealId,
       paymentId: tx.paymentId,
       description: tx.description,
+      bankCard,
       createdAt: tx.createdAt,
     };
   }
 
-  async getOrCreate(userId: string) {
-    const existing = await this.prisma.wallet.findUnique({ where: { userId } });
+  async getOrCreate(userId: string): Promise<WalletWithCard> {
+    const existing = await this.prisma.wallet.findUnique({
+      where: { userId },
+      include: { bankCard: true },
+    });
     if (existing) return existing;
     return this.prisma.wallet.create({
       data: { userId, availableToman: 0, heldToman: 0 },
+      include: { bankCard: true },
     });
   }
 
   async getMine(userId: string) {
     return this.toPublic(await this.getOrCreate(userId));
+  }
+
+  async getBankCard(userId: string) {
+    const wallet = await this.getOrCreate(userId);
+    return {
+      bankCard: wallet.bankCard
+        ? this.toBankCardPublic(wallet.bankCard)
+        : null,
+    };
+  }
+
+  async upsertBankCard(userId: string, dto: UpsertBankCardDto) {
+    const parsed = parseBankCardInput(dto);
+    const wallet = await this.getOrCreate(userId);
+    const card = await this.prisma.bankCard.upsert({
+      where: { walletId: wallet.id },
+      create: {
+        walletId: wallet.id,
+        holderName: parsed.holderName,
+        cardNumber: parsed.cardNumber,
+        sheba: parsed.sheba,
+        bankName: parsed.bankName,
+      },
+      update: {
+        holderName: parsed.holderName,
+        cardNumber: parsed.cardNumber,
+        sheba: parsed.sheba,
+        bankName: parsed.bankName,
+      },
+    });
+    return this.toBankCardPublic(card);
   }
 
   async listTransactions(userId: string, take = 50) {
@@ -179,15 +255,27 @@ export class WalletsService {
       throw new BadRequestException('حداقل برداشت ۱۰٬۰۰۰ تومان است');
     }
     const wallet = await this.getOrCreate(userId);
+    if (!wallet.bankCard) {
+      throw new BadRequestException(
+        'برای برداشت ابتدا کارت بانکی خود را ثبت کنید',
+      );
+    }
     if (wallet.availableToman < amountToman) {
       throw new BadRequestException('موجودی قابل برداشت کافی نیست');
     }
+    const card = wallet.bankCard;
     return this.apply(userId, {
       type: WalletTxType.WITHDRAW_REQUEST,
       amountToman,
       deltaAvailable: -amountToman,
       deltaHeld: amountToman,
-      description: `درخواست برداشت · ${amountToman.toLocaleString('fa-IR')} تومان`,
+      payout: {
+        holderName: card.holderName,
+        cardNumber: card.cardNumber,
+        sheba: card.sheba,
+        bankName: card.bankName,
+      },
+      description: `درخواست برداشت · ${amountToman.toLocaleString('fa-IR')} تومان · ${card.bankName} ****${card.cardNumber.slice(-4)}`,
     });
   }
 
@@ -225,6 +313,7 @@ export class WalletsService {
       include: {
         wallet: {
           include: {
+            bankCard: true,
             user: {
               select: {
                 id: true,
@@ -260,6 +349,20 @@ export class WalletsService {
           ? ('completed' as const)
           : ('rejected' as const)
         : ('pending' as const);
+      const snapshot =
+        r.payoutHolderName &&
+        r.payoutCardNumber &&
+        r.payoutSheba &&
+        r.payoutBankName
+          ? this.toBankCardPublic({
+              holderName: r.payoutHolderName,
+              cardNumber: r.payoutCardNumber,
+              sheba: r.payoutSheba,
+              bankName: r.payoutBankName,
+            })
+          : r.wallet.bankCard
+            ? this.toBankCardPublic(r.wallet.bankCard)
+            : null;
       return {
         id: r.id,
         amountToman: r.amountToman,
@@ -268,6 +371,7 @@ export class WalletsService {
         status: settleStatus,
         settledAt: settle?.createdAt ?? null,
         user: r.wallet.user,
+        bankCard: snapshot,
         wallet: {
           id: r.wallet.id,
           availableToman: r.wallet.availableToman,
@@ -318,6 +422,7 @@ export class WalletsService {
       paymentId?: string;
       relatedTxId?: string;
       description?: string;
+      payout?: PayoutSnapshot;
     },
   ) {
     const wallet = await this.getOrCreate(userId);
@@ -331,6 +436,7 @@ export class WalletsService {
       this.prisma.wallet.update({
         where: { id: wallet.id },
         data: { availableToman, heldToman },
+        include: { bankCard: true },
       }),
       this.prisma.walletTransaction.create({
         data: {
@@ -343,6 +449,10 @@ export class WalletsService {
           paymentId: input.paymentId,
           relatedTxId: input.relatedTxId,
           description: input.description,
+          payoutHolderName: input.payout?.holderName,
+          payoutCardNumber: input.payout?.cardNumber,
+          payoutSheba: input.payout?.sheba,
+          payoutBankName: input.payout?.bankName,
         },
       }),
     ]);

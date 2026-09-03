@@ -1,18 +1,11 @@
-import {
-  BadRequestException,
-  Injectable,
-} from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'crypto';
 import { existsSync, mkdirSync, unlinkSync, writeFileSync } from 'fs';
 import { join } from 'path';
 
 export const UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
-export const UPLOAD_MIME = new Set([
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-]);
+export const UPLOAD_MIME = new Set(['image/jpeg', 'image/png', 'image/webp']);
 export const CAMPAIGN_MAX_IMAGES = 8;
 
 @Injectable()

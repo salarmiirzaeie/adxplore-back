@@ -12,10 +12,11 @@ import { UserRole, type User } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { SmsService } from '../sms/sms.service';
 import { generateOtpCode, normalizeIranPhone } from '../common/phone.util';
+import { parseCategories, primaryCategory } from '../common/categories';
 import {
-  parseCategories,
-  primaryCategory,
-} from '../common/categories';
+  influencerCanAccessPanel,
+  influencerNextScreen,
+} from '../common/influencer-approval';
 import { JwtPayload } from './jwt-payload';
 
 @Injectable()
@@ -30,10 +31,7 @@ export class AuthService {
   async requestOtp(rawPhone: string) {
     const phone = normalizeIranPhone(rawPhone);
     const ttl = this.config.get<number>('OTP_TTL_SECONDS', 300);
-    const cooldown = this.config.get<number>(
-      'OTP_RESEND_COOLDOWN_SECONDS',
-      60,
-    );
+    const cooldown = this.config.get<number>('OTP_RESEND_COOLDOWN_SECONDS', 60);
     const length = this.config.get<number>('OTP_LENGTH', 5);
 
     const latest = await this.prisma.otp.findFirst({
@@ -164,9 +162,8 @@ export class AuthService {
         name: user.name,
         role: user.role,
         category:
-          primaryCategory(
-            parseCategories(user.categories, user.category),
-          ) ?? user.category,
+          primaryCategory(parseCategories(user.categories, user.category)) ??
+          user.category,
         categories: parseCategories(user.categories, user.category),
         city: user.city,
         province: user.province,
@@ -175,6 +172,9 @@ export class AuthService {
         businessSize: user.businessSize,
         followerRange: user.followerRange,
         photoUrl: user.photoUrl,
+        approvalStatus: user.approvalStatus,
+        canAccessPanel: influencerCanAccessPanel(user),
+        nextScreen: influencerNextScreen(user),
       },
     };
   }

@@ -39,8 +39,7 @@ export class DealsController {
 
   @Get()
   @ApiOperation({
-    summary:
-      'List my deals (brand or influencer). Optional campaignId filter.',
+    summary: 'List my deals (brand or influencer). Optional campaignId filter.',
   })
   @ApiQuery({ name: 'campaignId', required: false })
   @ApiOkResponse({ type: DealResponse, isArray: true })

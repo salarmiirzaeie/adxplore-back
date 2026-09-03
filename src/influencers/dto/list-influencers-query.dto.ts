@@ -1,9 +1,12 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 import {
-  BrandCategory,
-  FollowerRange,
-} from '../../generated/prisma/client';
+  IsEnum,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
+import { BrandCategory, FollowerRange } from '../../generated/prisma/client';
 
 export class ListInfluencersQueryDto {
   @ApiPropertyOptional({ enum: BrandCategory })

@@ -1,6 +1,12 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsBoolean, IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsEnum,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 import { BrandCategory } from '../../generated/prisma/client';
 
 export class BrowseCampaignsQueryDto {
@@ -11,7 +17,8 @@ export class BrowseCampaignsQueryDto {
 
   @ApiPropertyOptional({
     example: 'کرج',
-    description: 'Exact city match; also includes nationwide (کل ایران) campaigns',
+    description:
+      'Exact city match; also includes nationwide (کل ایران) campaigns',
   })
   @IsOptional()
   @IsString()

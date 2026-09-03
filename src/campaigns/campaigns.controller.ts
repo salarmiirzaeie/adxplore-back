@@ -62,10 +62,7 @@ export class CampaignsController {
       'Browse OPEN campaigns (influencer). Filters: category, city, q, forMe, invited',
   })
   @ApiOkResponse({ type: CampaignResponse, isArray: true })
-  browse(
-    @CurrentUser() user: User,
-    @Query() query: BrowseCampaignsQueryDto,
-  ) {
+  browse(@CurrentUser() user: User, @Query() query: BrowseCampaignsQueryDto) {
     return this.campaigns.browseOpen(user, query);
   }
 

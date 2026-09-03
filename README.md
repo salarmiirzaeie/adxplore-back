@@ -72,6 +72,26 @@ Brand / influencer profile fields (all optional on PATCH; role-specific required
 
 Enums: `BrandCategory`, `BrandGoal`, `BusinessSize`, `FollowerRange` — see Swagger.
 
+### Influencer Instagram approval (PWA / TWA)
+
+After OTP signup and profile onboarding, new influencers cannot use the panel until we confirm they **followed** [@adxplore.ir](https://www.instagram.com/adxplore.ir/) and **DMed a unique code**.
+
+Client routing from `GET /v1/users/me` (and OTP verify) fields:
+
+- `nextScreen`: `ONBOARDING` → `INSTAGRAM_APPROVAL` → `PANEL`
+- `canAccessPanel`: `false` until approved
+- `approvalStatus`: `PENDING` | `APPROVED` | `REJECTED` (influencers only)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/v1/users/me/instagram-approval` | Copy-ready DM message, verify code, follow/DM deep links, step UI |
+| `POST` | `/v1/users/me/instagram-approval/confirm-sent` | User tapped «پیام را فرستادم» |
+| `GET` | `/v1/admin/influencers?status=PENDING` | Admin queue (search by name / phone / handle / code) |
+| `POST` | `/v1/admin/influencers/:id/approve` | Unlock panel after checking IG follow + DM |
+| `POST` | `/v1/admin/influencers/:id/reject` | Optional `{ "reason" }` — user can follow/DM again |
+
+Poll `GET /v1/users/me` or the approval endpoint every `pollIntervalSeconds` (15) while waiting. Marketplace browse/offers return `403` with `code: INFLUENCER_NOT_APPROVED` until approved. Existing influencers were backfilled as `APPROVED`.
+
 ## Campaigns
 
 Require `Authorization: Bearer <accessToken>` and `role = BRAND`.
@@ -209,6 +229,36 @@ Require `Authorization: Bearer <accessToken>`.
 | `POST` | `/v1/notifications/read-all` | Mark all as read |
 
 Types: `INVITATION_RECEIVED`, `OFFER_RECEIVED`, `OFFER_ACCEPTED`, `OFFER_REJECTED`, `OFFER_CANCELLED`, `DEAL_STARTED`, `DELIVERABLE_SUBMITTED`, `REVISION_REQUESTED`, `DEAL_COMPLETED`, `DEAL_CANCELLED`.
+
+## Wallet
+
+Require `Authorization: Bearer <accessToken>`.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/v1/wallets/me` | Balances + saved bank card |
+| `GET` | `/v1/wallets/me/transactions` | Ledger |
+| `GET` | `/v1/wallets/me/bank-card` | Saved bank card (`bankCard: null` if none) |
+| `PUT` | `/v1/wallets/me/bank-card` | Save or edit bank card |
+| `POST` | `/v1/wallets/me/withdraw` | Influencer payout request (requires saved bank card) |
+
+Save / edit bank card:
+
+```json
+{
+  "holderName": "سارا محمدی",
+  "cardNumber": "6037998181818187",
+  "sheba": "IR760170000000000000000001"
+}
+```
+
+`GET /v1/wallets/me` includes `hasBankCard` and `bankCard` (`holderName`, `cardNumber`, `cardMasked`, `cardLast4`, `sheba`, `bankName`). Bank name is derived from the card BIN / Sheba.
+
+Payout (`POST /v1/wallets/me/withdraw`) is influencer-only and **requires a saved bank card**. Amount moves available → held until admin pays out. The card is snapshotted onto the request so later edits do not change a pending payout. Admin `GET /v1/admin/withdrawals` includes that `bankCard`.
+
+```json
+{ "amountToman": 500000 }
+```
 
 ## Health
 

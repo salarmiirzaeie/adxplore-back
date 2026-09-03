@@ -3,13 +3,28 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { UserRole, type User } from '../generated/prisma/client';
+import { ConfigService } from '@nestjs/config';
+import {
+  InfluencerApprovalStatus,
+  UserRole,
+  type User,
+} from '../generated/prisma/client';
 import {
   normalizeCategories,
   parseCategories,
   primaryCategory,
 } from '../common/categories';
 import { resolveProfileLocation } from '../common/cities';
+import {
+  influencerCanAccessPanel,
+  influencerNextScreen,
+  isInfluencerProfileComplete,
+} from '../common/influencer-approval';
+import {
+  buildInstagramApprovalPayload,
+  DEFAULT_INSTAGRAM_PAGE_USERNAME,
+  generateInstagramVerifyCode,
+} from '../common/instagram';
 import { PrismaService } from '../prisma/prisma.service';
 import { UploadsService } from '../uploads/uploads.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
@@ -19,7 +34,15 @@ export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly uploads: UploadsService,
+    private readonly config: ConfigService,
   ) {}
+
+  private pageUsername() {
+    return (
+      this.config.get<string>('INSTAGRAM_PAGE_USERNAME')?.trim() ||
+      DEFAULT_INSTAGRAM_PAGE_USERNAME
+    );
+  }
 
   toPublic(user: User) {
     const categories = parseCategories(user.categories, user.category);
@@ -37,6 +60,9 @@ export class UsersService {
       goal: user.goal,
       businessSize: user.businessSize,
       followerRange: user.followerRange,
+      approvalStatus: user.approvalStatus,
+      canAccessPanel: influencerCanAccessPanel(user),
+      nextScreen: influencerNextScreen(user),
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };
@@ -48,6 +74,70 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
     return this.toPublic(user);
+  }
+
+  async ensureInstagramVerifyCode(user: User): Promise<User> {
+    if (user.role !== UserRole.INFLUENCER) return user;
+    if (user.instagramVerifyCode) return user;
+    if (!isInfluencerProfileComplete(user)) return user;
+
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const code = generateInstagramVerifyCode();
+      try {
+        return await this.prisma.user.update({
+          where: { id: user.id },
+          data: {
+            instagramVerifyCode: code,
+            ...(user.approvalStatus === InfluencerApprovalStatus.APPROVED
+              ? {}
+              : { approvalStatus: InfluencerApprovalStatus.PENDING }),
+          },
+        });
+      } catch {
+        /* unique collision — retry */
+      }
+    }
+
+    throw new BadRequestException('نتوانستیم کد تأیید اینستاگرام بسازیم');
+  }
+
+  async getInstagramApproval(user: User) {
+    if (user.role !== UserRole.INFLUENCER) {
+      throw new BadRequestException('این مرحله فقط برای اینفلوئنسرها است');
+    }
+    const withCode = await this.ensureInstagramVerifyCode(user);
+    return buildInstagramApprovalPayload({
+      user: withCode,
+      pageUsername: this.pageUsername(),
+    });
+  }
+
+  async markInstagramDmSent(user: User) {
+    if (user.role !== UserRole.INFLUENCER) {
+      throw new BadRequestException('این مرحله فقط برای اینفلوئنسرها است');
+    }
+    if (!isInfluencerProfileComplete(user)) {
+      throw new BadRequestException('ابتدا پروفایل را کامل کنید');
+    }
+    if (user.approvalStatus === InfluencerApprovalStatus.APPROVED) {
+      throw new BadRequestException('حساب شما قبلاً تأیید شده است');
+    }
+
+    const withCode = await this.ensureInstagramVerifyCode(user);
+    const updated = await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        instagramDmMarkedSentAt: new Date(),
+        approvalStatus: InfluencerApprovalStatus.PENDING,
+        rejectedAt: null,
+        rejectionReason: null,
+      },
+    });
+
+    return buildInstagramApprovalPayload({
+      user: { ...withCode, ...updated },
+      pageUsername: this.pageUsername(),
+    });
   }
 
   async updateProfile(id: string, dto: UpdateProfileDto) {
@@ -82,8 +172,7 @@ export class UsersService {
       : existing.province;
 
     if (existing.role === UserRole.BRAND) {
-      const nextName =
-        dto.name !== undefined ? dto.name.trim() : existing.name;
+      const nextName = dto.name !== undefined ? dto.name.trim() : existing.name;
 
       if (
         !nextName?.trim() ||
@@ -98,8 +187,7 @@ export class UsersService {
     }
 
     if (existing.role === UserRole.INFLUENCER) {
-      const nextName =
-        dto.name !== undefined ? dto.name.trim() : existing.name;
+      const nextName = dto.name !== undefined ? dto.name.trim() : existing.name;
       const nextWebsite =
         dto.website !== undefined
           ? dto.website === null
@@ -128,7 +216,7 @@ export class UsersService {
     const categoriesChanged =
       dto.categories !== undefined || dto.category !== undefined;
 
-    const user = await this.prisma.user.update({
+    let user = await this.prisma.user.update({
       where: { id },
       data: {
         ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
@@ -140,8 +228,7 @@ export class UsersService {
           : {}),
         ...(dto.website !== undefined
           ? {
-              website:
-                dto.website === null ? null : dto.website.trim() || null,
+              website: dto.website === null ? null : dto.website.trim() || null,
             }
           : {}),
         ...(dto.goal !== undefined ? { goal: dto.goal } : {}),
@@ -153,6 +240,8 @@ export class UsersService {
           : {}),
       },
     });
+
+    user = await this.ensureInstagramVerifyCode(user);
     return this.toPublic(user);
   }
 

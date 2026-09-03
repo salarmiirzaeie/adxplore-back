@@ -72,13 +72,16 @@ export class PaymentsService {
   }
 
   /** Called when a deal is created after offer accept. */
-  async createPendingForDeal(deal: {
-    id: string;
-    offerId: string;
-    brandId: string;
-    influencerId: string;
-    fee: number;
-  }, campaignTitle: string) {
+  async createPendingForDeal(
+    deal: {
+      id: string;
+      offerId: string;
+      brandId: string;
+      influencerId: string;
+      fee: number;
+    },
+    campaignTitle: string,
+  ) {
     const amountToman = deal.fee;
     const amountRial = this.zarinpal.tomanToRial(amountToman);
     const description = `پرداخت همکاری کمپین «${campaignTitle}»`;
@@ -281,7 +284,10 @@ export class PaymentsService {
   async handleCallback(authority: string, status: string) {
     const auth = authority.trim();
     if (!auth) {
-      return this.zarinpal.frontendResultUrl({ ok: '0', error: 'missing_authority' });
+      return this.zarinpal.frontendResultUrl({
+        ok: '0',
+        error: 'missing_authority',
+      });
     }
 
     if (String(status).toUpperCase() !== 'OK') {
@@ -302,7 +308,11 @@ export class PaymentsService {
           failed.brandId,
           MessageKind.SYSTEM,
           'پرداخت ناموفق بود',
-          { event: 'PAYMENT_FAILED', paymentId: failed.id, dealId: failed.dealId },
+          {
+            event: 'PAYMENT_FAILED',
+            paymentId: failed.id,
+            dealId: failed.dealId,
+          },
         );
         await this.notifications.create(
           failed.brandId,
@@ -363,7 +373,11 @@ export class PaymentsService {
         payment.brandId,
         MessageKind.SYSTEM,
         'تایید پرداخت ناموفق بود',
-        { event: 'PAYMENT_FAILED', paymentId: payment.id, dealId: payment.dealId },
+        {
+          event: 'PAYMENT_FAILED',
+          paymentId: payment.id,
+          dealId: payment.dealId,
+        },
       );
       return this.zarinpal.frontendResultUrl({
         ok: '0',

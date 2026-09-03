@@ -1,5 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsIn, IsString, MaxLength, MinLength, ValidateIf } from 'class-validator';
+import {
+  IsIn,
+  IsString,
+  MaxLength,
+  MinLength,
+  ValidateIf,
+} from 'class-validator';
 import { DealStatus } from '../../generated/prisma/client';
 
 const DEAL_STATUS_UPDATES = [

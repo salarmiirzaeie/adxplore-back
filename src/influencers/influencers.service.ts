@@ -4,14 +4,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  InfluencerApprovalStatus,
   UserRole,
   type Prisma,
   type User,
 } from '../generated/prisma/client';
-import {
-  parseCategories,
-  primaryCategory,
-} from '../common/categories';
+import { parseCategories, primaryCategory } from '../common/categories';
 import { PrismaService } from '../prisma/prisma.service';
 import { ListInfluencersQueryDto } from './dto/list-influencers-query.dto';
 
@@ -21,7 +19,9 @@ export class InfluencersService {
 
   private assertBrand(user: User) {
     if (user.role !== UserRole.BRAND) {
-      throw new ForbiddenException('فقط برندها می‌توانند اینفلوئنسرها را ببینند');
+      throw new ForbiddenException(
+        'فقط برندها می‌توانند اینفلوئنسرها را ببینند',
+      );
     }
   }
 
@@ -44,12 +44,12 @@ export class InfluencersService {
     const categories = parseCategories(user.categories, user.category);
     return Boolean(
       user.role === UserRole.INFLUENCER &&
-        user.name?.trim() &&
-        user.website?.trim() &&
-        user.city?.trim() &&
-        user.province?.trim() &&
-        categories.length &&
-        user.followerRange,
+      user.name?.trim() &&
+      user.website?.trim() &&
+      user.city?.trim() &&
+      user.province?.trim() &&
+      categories.length &&
+      user.followerRange,
     );
   }
 
@@ -58,6 +58,7 @@ export class InfluencersService {
 
     const where: Prisma.UserWhereInput = {
       role: UserRole.INFLUENCER,
+      approvalStatus: InfluencerApprovalStatus.APPROVED,
       name: { not: null },
       website: { not: null },
       city: { not: null },
@@ -75,7 +76,9 @@ export class InfluencersService {
       take: 100,
     });
 
-    return influencers.filter((u) => this.isComplete(u)).map((u) => this.toCard(u));
+    return influencers
+      .filter((u) => this.isComplete(u))
+      .map((u) => this.toCard(u));
   }
 
   async getOne(viewer: User, id: string) {
@@ -85,6 +88,7 @@ export class InfluencersService {
       where: {
         id,
         role: UserRole.INFLUENCER,
+        approvalStatus: InfluencerApprovalStatus.APPROVED,
         name: { not: null },
         website: { not: null },
         city: { not: null },

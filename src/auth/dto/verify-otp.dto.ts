@@ -19,7 +19,8 @@ export class VerifyOtpDto {
   @ApiProperty({
     enum: UserRole,
     example: UserRole.INFLUENCER,
-    description: 'Login role: INFLUENCER | BRAND | ADMIN (admin cannot self-register)',
+    description:
+      'Login role: INFLUENCER | BRAND | ADMIN (admin cannot self-register)',
   })
   @IsEnum(UserRole)
   role!: UserRole;

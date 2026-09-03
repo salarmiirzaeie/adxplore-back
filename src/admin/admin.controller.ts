@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   Get,
   Param,
@@ -17,6 +18,10 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { AdminService } from './admin.service';
+import {
+  ListInfluencerApprovalsQueryDto,
+  RejectInfluencerDto,
+} from './dto/influencer-approval.dto';
 
 @ApiTags('admin')
 @ApiBearerAuth('access-token')
@@ -69,5 +74,31 @@ export class AdminController {
   @ApiQuery({ name: 'take', required: false })
   listPayments(@Query('take') take?: string) {
     return this.admin.listPayments(take ? Number(take) : 50);
+  }
+
+  @Get('influencers')
+  @ApiOperation({
+    summary:
+      'Review influencer Instagram follow + DM codes before they can use the panel',
+  })
+  listInfluencerApprovals(@Query() query: ListInfluencerApprovalsQueryDto) {
+    return this.admin.listInfluencerApprovals(query);
+  }
+
+  @Post('influencers/:id/approve')
+  @ApiOperation({
+    summary:
+      'Approve influencer after confirming they followed @adxplore.ir and DMed the verify code',
+  })
+  approveInfluencer(@Param('id') id: string) {
+    return this.admin.approveInfluencer(id);
+  }
+
+  @Post('influencers/:id/reject')
+  @ApiOperation({
+    summary: 'Reject influencer (they can follow/DM again and wait for review)',
+  })
+  rejectInfluencer(@Param('id') id: string, @Body() dto: RejectInfluencerDto) {
+    return this.admin.rejectInfluencer(id, dto.reason);
   }
 }

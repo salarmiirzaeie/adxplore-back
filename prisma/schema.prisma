@@ -114,6 +114,12 @@ enum MessageKind {
   DELIVERABLE
 }
 
+enum InfluencerApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum NotificationType {
   INVITATION_RECEIVED
   OFFER_RECEIVED
@@ -134,6 +140,8 @@ enum NotificationType {
   WALLET_WITHDRAW_COMPLETED
   WALLET_WITHDRAW_REJECTED
   CHAT_MESSAGE
+  INFLUENCER_APPROVED
+  INFLUENCER_REJECTED
 }
 
 model User {
@@ -154,6 +162,14 @@ model User {
   goal                 BrandGoal?
   businessSize         BusinessSize?
   followerRange        FollowerRange?
+  /// Influencers only. Null for brand/admin. Existing influencers backfilled APPROVED.
+  approvalStatus       InfluencerApprovalStatus?
+  /// Unique code the influencer DMs to @adxplore.ir after onboarding
+  instagramVerifyCode  String?        @unique
+  instagramDmMarkedSentAt DateTime?
+  approvedAt           DateTime?
+  rejectedAt           DateTime?
+  rejectionReason      String?
   createdAt            DateTime       @default(now())
   updatedAt            DateTime       @updatedAt
   otps                 Otp[]
@@ -171,6 +187,8 @@ model User {
   conversationsAsBrand       Conversation[] @relation("ConversationBrand")
   conversationsAsInfluencer  Conversation[] @relation("ConversationInfluencer")
   messagesSent               Message[]
+
+  @@index([role, approvalStatus])
 }
 
 model Campaign {
@@ -356,6 +374,20 @@ model Wallet {
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
   transactions   WalletTransaction[]
+  bankCard       BankCard?
+}
+
+/// Saved payout destination (one card per wallet). Snapshotted onto WITHDRAW_REQUEST rows.
+model BankCard {
+  id         String   @id @default(cuid())
+  walletId   String    @unique
+  wallet     Wallet    @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  holderName String
+  cardNumber String
+  sheba      String
+  bankName   String
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 }
 
 model WalletTransaction {
@@ -371,6 +403,11 @@ model WalletTransaction {
   /// Links DONE/CANCEL rows to the original WITHDRAW_REQUEST
   relatedTxId    String?
   description    String?
+  /// Bank card snapshot at payout request time (admin pays this destination)
+  payoutHolderName String?
+  payoutCardNumber  String?
+  payoutSheba       String?
+  payoutBankName    String?
   createdAt      DateTime     @default(now())
 
   @@index([walletId, createdAt])

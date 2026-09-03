@@ -22,7 +22,10 @@ import { JwtStrategy } from './jwt.strategy';
         return {
           secret,
           signOptions: {
-            expiresIn: config.get<string>('JWT_EXPIRES_IN', '7d') as `${number}d`,
+            expiresIn: config.get<string>(
+              'JWT_EXPIRES_IN',
+              '7d',
+            ) as `${number}d`,
           },
         };
       },

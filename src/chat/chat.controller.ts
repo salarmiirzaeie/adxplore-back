@@ -20,10 +20,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import type { User } from '../generated/prisma/client';
 import { ChatGateway } from './chat.gateway';
 import { ChatService } from './chat.service';
-import {
-  ChatMessageResponse,
-  ConversationResponse,
-} from './dto/chat-response';
+import { ChatMessageResponse, ConversationResponse } from './dto/chat-response';
 import { SendMessageDto } from './dto/send-message.dto';
 
 @ApiTags('chat')

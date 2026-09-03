@@ -40,7 +40,9 @@ export class InvitationsController {
   }
 
   @Post('bulk')
-  @ApiOperation({ summary: 'Invite multiple influencers to a campaign (brand only)' })
+  @ApiOperation({
+    summary: 'Invite multiple influencers to a campaign (brand only)',
+  })
   createBulk(@CurrentUser() user: User, @Body() dto: BulkCreateInvitationsDto) {
     return this.invitations.createBulk(user, dto);
   }
@@ -67,7 +69,9 @@ export class InvitationsController {
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Cancel invitation (brand only, PENDING → CANCELLED)' })
+  @ApiOperation({
+    summary: 'Cancel invitation (brand only, PENDING → CANCELLED)',
+  })
   @ApiOkResponse({ type: InvitationResponse })
   updateStatus(
     @CurrentUser() user: User,

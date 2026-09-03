@@ -18,7 +18,10 @@ import {
   parseCategories,
   primaryCategory,
 } from '../common/categories';
-import { campaignLocationWhere, resolveCampaignLocation } from '../common/cities';
+import {
+  campaignLocationWhere,
+  resolveCampaignLocation,
+} from '../common/cities';
 import {
   normalizeDeliverables,
   parseDeliverables,
@@ -32,6 +35,7 @@ import {
 import { BrowseCampaignsQueryDto } from './dto/browse-campaigns-query.dto';
 import { CreateCampaignDto } from './dto/create-campaign.dto';
 import { UpdateCampaignDto } from './dto/update-campaign.dto';
+import { assertInfluencerApproved } from '../common/influencer-approval';
 
 type CampaignWithImages = Campaign & { images: CampaignImage[] };
 
@@ -83,7 +87,9 @@ export class CampaignsService {
 
   private assertBudget(min?: number | null, max?: number | null) {
     if (min != null && max != null && min > max) {
-      throw new BadRequestException('حداقل بودجه نمی‌تواند بیشتر از حداکثر باشد');
+      throw new BadRequestException(
+        'حداقل بودجه نمی‌تواند بیشتر از حداکثر باشد',
+      );
     }
   }
 
@@ -141,7 +147,9 @@ export class CampaignsService {
 
     const status = dto.status ?? CampaignStatus.DRAFT;
     if (status === CampaignStatus.CLOSED) {
-      throw new BadRequestException('نمی‌توان کمپین را در وضعیت بسته ایجاد کرد');
+      throw new BadRequestException(
+        'نمی‌توان کمپین را در وضعیت بسته ایجاد کرد',
+      );
     }
 
     const location = resolveCampaignLocation(dto.city, dto.province);
@@ -181,8 +189,11 @@ export class CampaignsService {
 
   async browseOpen(user: User, query: BrowseCampaignsQueryDto) {
     if (user.role !== UserRole.INFLUENCER) {
-      throw new ForbiddenException('فقط اینفلوئنسرها می‌توانند کمپین‌ها را مرور کنند');
+      throw new ForbiddenException(
+        'فقط اینفلوئنسرها می‌توانند کمپین‌ها را مرور کنند',
+      );
     }
+    assertInfluencerApproved(user);
 
     const where: Prisma.CampaignWhereInput = {
       status: CampaignStatus.OPEN,
@@ -211,7 +222,9 @@ export class CampaignsService {
 
     if (query.q?.trim()) {
       const q = query.q.trim();
-      and.push({ OR: [{ title: { contains: q } }, { brief: { contains: q } }] });
+      and.push({
+        OR: [{ title: { contains: q } }, { brief: { contains: q } }],
+      });
     }
 
     if (query.invited) {
@@ -270,6 +283,7 @@ export class CampaignsService {
     }
 
     if (user.role === UserRole.INFLUENCER) {
+      assertInfluencerApproved(user);
       if (campaign.status !== CampaignStatus.OPEN) {
         throw new NotFoundException('کمپین پیدا نشد');
       }

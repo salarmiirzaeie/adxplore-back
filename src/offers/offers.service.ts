@@ -17,10 +17,7 @@ import {
   mapCampaignCategories,
   mapPartyCategories,
 } from '../common/categories';
-import {
-  offerCampaignSelect,
-  partySelect,
-} from '../common/party-select';
+import { offerCampaignSelect, partySelect } from '../common/party-select';
 import { ChatGateway } from '../chat/chat.gateway';
 import { ChatService } from '../chat/chat.service';
 import { DealsService } from '../deals/deals.service';
@@ -28,6 +25,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOfferDto } from './dto/create-offer.dto';
 import { UpdateOfferStatusDto } from './dto/update-offer-status.dto';
+import { assertInfluencerApproved } from '../common/influencer-approval';
 
 const offerInclude = {
   campaign: { select: offerCampaignSelect },
@@ -131,8 +129,11 @@ export class OffersService {
 
   async create(user: User, dto: CreateOfferDto) {
     if (user.role !== UserRole.INFLUENCER) {
-      throw new ForbiddenException('فقط اینفلوئنسرها می‌توانند پیشنهاد بفرستند');
+      throw new ForbiddenException(
+        'فقط اینفلوئنسرها می‌توانند پیشنهاد بفرستند',
+      );
     }
+    assertInfluencerApproved(user);
 
     const campaign = await this.prisma.campaign.findUnique({
       where: { id: dto.campaignId },
@@ -141,7 +142,9 @@ export class OffersService {
       throw new NotFoundException('کمپین پیدا نشد');
     }
     if (campaign.status !== CampaignStatus.OPEN) {
-      throw new BadRequestException('فقط برای کمپین فعال می‌توان پیشنهاد فرستاد');
+      throw new BadRequestException(
+        'فقط برای کمپین فعال می‌توان پیشنهاد فرستاد',
+      );
     }
 
     const existingPending = await this.prisma.offer.findFirst({
@@ -152,9 +155,7 @@ export class OffersService {
       },
     });
     if (existingPending) {
-      throw new BadRequestException(
-        'پیشنهاد فعالی برای این کمپین دارید',
-      );
+      throw new BadRequestException('پیشنهاد فعالی برای این کمپین دارید');
     }
 
     const offer = await this.prisma.offer.create({
@@ -252,14 +253,18 @@ export class OffersService {
       throw new NotFoundException('پیشنهاد پیدا نشد');
     }
     if (offer.status !== OfferStatus.PENDING) {
-      throw new BadRequestException('فقط پیشنهادهای در انتظار قابل تغییر هستند');
+      throw new BadRequestException(
+        'فقط پیشنهادهای در انتظار قابل تغییر هستند',
+      );
     }
 
     const next = dto.status;
 
     if (next === OfferStatus.CANCELLED) {
       if (user.id !== offer.influencerId) {
-        throw new ForbiddenException('فقط اینفلوئنسر می‌تواند پیشنهاد را لغو کند');
+        throw new ForbiddenException(
+          'فقط اینفلوئنسر می‌تواند پیشنهاد را لغو کند',
+        );
       }
     } else if (next === OfferStatus.ACCEPTED || next === OfferStatus.REJECTED) {
       if (user.id !== offer.brandId) {

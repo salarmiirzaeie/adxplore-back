@@ -24,6 +24,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { UserProfileResponse } from '../common/swagger-responses';
 import type { User } from '../generated/prisma/client';
 import { UPLOAD_MAX_BYTES } from '../uploads/uploads.service';
+import { InstagramApprovalResponse } from './dto/instagram-approval-response';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UsersService } from './users.service';
 
@@ -39,6 +40,26 @@ export class UsersController {
   @ApiOkResponse({ type: UserProfileResponse })
   me(@CurrentUser() user: User) {
     return this.users.toPublic(user);
+  }
+
+  @Get('me/instagram-approval')
+  @ApiOperation({
+    summary:
+      'Influencer PWA/TWA: follow @adxplore.ir, copy DM message/code, then wait for approval',
+  })
+  @ApiOkResponse({ type: InstagramApprovalResponse })
+  instagramApproval(@CurrentUser() user: User) {
+    return this.users.getInstagramApproval(user);
+  }
+
+  @Post('me/instagram-approval/confirm-sent')
+  @ApiOperation({
+    summary:
+      'Influencer tapped «پیام را فرستادم» after following and DMing the verify code',
+  })
+  @ApiOkResponse({ type: InstagramApprovalResponse })
+  confirmInstagramDmSent(@CurrentUser() user: User) {
+    return this.users.markInstagramDmSent(user);
   }
 
   @Patch('me')
