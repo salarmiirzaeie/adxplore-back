@@ -19,6 +19,10 @@ import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { AdminService } from './admin.service';
 import {
+  ListCampaignReviewsQueryDto,
+  RejectCampaignDto,
+} from './dto/campaign-review.dto';
+import {
   ListInfluencerApprovalsQueryDto,
   RejectInfluencerDto,
 } from './dto/influencer-approval.dto';
@@ -100,5 +104,32 @@ export class AdminController {
   })
   rejectInfluencer(@Param('id') id: string, @Body() dto: RejectInfluencerDto) {
     return this.admin.rejectInfluencer(id, dto.reason);
+  }
+
+  @Get('campaigns')
+  @ApiOperation({
+    summary:
+      'Review brand campaigns before they appear in Explore or invites are delivered',
+  })
+  listCampaigns(@Query() query: ListCampaignReviewsQueryDto) {
+    return this.admin.listCampaignReviews(query);
+  }
+
+  @Post('campaigns/:id/approve')
+  @ApiOperation({
+    summary:
+      'Approve campaign: it goes to Explore and queued invites are sent. No brand notification.',
+  })
+  approveCampaign(@Param('id') id: string) {
+    return this.admin.approveCampaign(id);
+  }
+
+  @Post('campaigns/:id/reject')
+  @ApiOperation({
+    summary:
+      'Reject campaign content. Brand is notified with the reason and can edit and resubmit.',
+  })
+  rejectCampaign(@Param('id') id: string, @Body() dto: RejectCampaignDto) {
+    return this.admin.rejectCampaign(id, dto);
   }
 }

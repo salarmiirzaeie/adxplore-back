@@ -7,5 +7,6 @@ import { InvitationsService } from './invitations.service';
   imports: [NotificationsModule],
   controllers: [InvitationsController],
   providers: [InvitationsService],
+  exports: [InvitationsService],
 })
 export class InvitationsModule {}

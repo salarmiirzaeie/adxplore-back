@@ -129,7 +129,8 @@ export class CreateCampaignDto {
   @ApiPropertyOptional({
     enum: CampaignStatus,
     example: CampaignStatus.DRAFT,
-    description: 'DRAFT or OPEN on create',
+    description:
+      'DRAFT to save, or OPEN/PENDING_REVIEW to submit for admin review. Brands cannot put a campaign in Explore.',
   })
   @IsOptional()
   @IsEnum(CampaignStatus)

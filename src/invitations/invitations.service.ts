@@ -17,6 +17,10 @@ import {
   mapPartyCategories,
   parseCategories,
 } from '../common/categories';
+import {
+  canBrandInvite,
+  isCampaignInExplore,
+} from '../common/campaign-status';
 import { invitationCampaignSelect, partySelect } from '../common/party-select';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -108,7 +112,7 @@ export class InvitationsService {
     if (!campaign || campaign.brandId !== user.id) {
       throw new NotFoundException('کمپین پیدا نشد');
     }
-    if (campaign.status !== CampaignStatus.OPEN) {
+    if (!canBrandInvite(campaign.status)) {
       throw new BadRequestException('فقط برای کمپین فعال می‌توان دعوت فرستاد');
     }
 
@@ -157,14 +161,7 @@ export class InvitationsService {
         include: invitationInclude,
       });
 
-      await this.notifications.create(
-        influencer.id,
-        NotificationType.INVITATION_RECEIVED,
-        'دعوت جدید',
-        `برند «${user.name?.trim() || 'برند'}» شما را به کمپین «${campaign.title}» دعوت کرد`,
-        `/app/campaigns/${campaign.id}`,
-        updated.id,
-      );
+      await this.notifyInfluencerIfLive(influencer.id, user, campaign, updated.id);
 
       return this.toPublic(updated);
     }
@@ -180,12 +177,10 @@ export class InvitationsService {
       include: invitationInclude,
     });
 
-    await this.notifications.create(
+    await this.notifyInfluencerIfLive(
       influencer.id,
-      NotificationType.INVITATION_RECEIVED,
-      'دعوت جدید',
-      `برند «${user.name?.trim() || 'برند'}» شما را به کمپین «${campaign.title}» دعوت کرد`,
-      `/app/campaigns/${campaign.id}`,
+      user,
+      campaign,
       invitation.id,
     );
 
@@ -238,7 +233,10 @@ export class InvitationsService {
         throw new ForbiddenException('فیلتر کمپین فقط برای برند مجاز است');
       }
       const items = await this.prisma.invitation.findMany({
-        where: { influencerId: user.id },
+        where: {
+          influencerId: user.id,
+          campaign: { status: CampaignStatus.OPEN },
+        },
         include: invitationInclude,
         orderBy: { createdAt: 'desc' },
       });
@@ -258,6 +256,12 @@ export class InvitationsService {
     }
     if (invitation.brandId !== user.id && invitation.influencerId !== user.id) {
       throw new ForbiddenException('دسترسی به این دعوت ندارید');
+    }
+    if (
+      user.role === UserRole.INFLUENCER &&
+      !isCampaignInExplore(invitation.campaign.status)
+    ) {
+      throw new NotFoundException('دعوت پیدا نشد');
     }
     return this.toPublic(invitation);
   }
@@ -290,5 +294,55 @@ export class InvitationsService {
     });
 
     return this.toPublic(updated);
+  }
+
+  async deliverQueuedInvites(campaign: {
+    id: string;
+    title: string;
+    brandId: string;
+    status: CampaignStatus;
+  }) {
+    if (!isCampaignInExplore(campaign.status)) return 0;
+
+    const brand = await this.prisma.user.findUnique({
+      where: { id: campaign.brandId },
+    });
+    const invites = await this.prisma.invitation.findMany({
+      where: {
+        campaignId: campaign.id,
+        status: InvitationStatus.PENDING,
+      },
+    });
+
+    const brandName = brand?.name?.trim() || 'برند';
+    for (const invite of invites) {
+      await this.notifications.create(
+        invite.influencerId,
+        NotificationType.INVITATION_RECEIVED,
+        'دعوت جدید',
+        `برند «${brandName}» شما را به کمپین «${campaign.title}» دعوت کرد`,
+        `/app/campaigns/${campaign.id}`,
+        invite.id,
+      );
+    }
+
+    return invites.length;
+  }
+
+  private async notifyInfluencerIfLive(
+    influencerId: string,
+    brand: User,
+    campaign: { id: string; title: string; status: CampaignStatus },
+    invitationId: string,
+  ) {
+    if (!isCampaignInExplore(campaign.status)) return;
+    await this.notifications.create(
+      influencerId,
+      NotificationType.INVITATION_RECEIVED,
+      'دعوت جدید',
+      `برند «${brand.name?.trim() || 'برند'}» شما را به کمپین «${campaign.title}» دعوت کرد`,
+      `/app/campaigns/${campaign.id}`,
+      invitationId,
+    );
   }
 }

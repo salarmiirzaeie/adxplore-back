@@ -56,6 +56,12 @@ export class CampaignResponse {
   @ApiProperty({ enum: CampaignStatus })
   status!: CampaignStatus;
 
+  @ApiPropertyOptional({ nullable: true })
+  rejectionReason!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  rejectedAt!: Date | null;
+
   @ApiProperty({ type: CampaignImageResponse, isArray: true })
   images!: CampaignImageResponse[];
 

@@ -58,6 +58,7 @@ enum FollowerRange {
 
 enum CampaignStatus {
   DRAFT
+  PENDING_REVIEW
   OPEN
   CLOSED
 }
@@ -142,6 +143,7 @@ enum NotificationType {
   CHAT_MESSAGE
   INFLUENCER_APPROVED
   INFLUENCER_REJECTED
+  CAMPAIGN_REJECTED
 }
 
 model User {
@@ -207,11 +209,13 @@ model Campaign {
   deliverable DeliverableType
   /// JSON array of DeliverableType values
   deliverables Json           @default("[]")
-  budgetMin   Int?
-  budgetMax   Int?
-  status      CampaignStatus  @default(DRAFT)
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  budgetMin        Int?
+  budgetMax        Int?
+  status           CampaignStatus @default(DRAFT)
+  rejectionReason  String?
+  rejectedAt       DateTime?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
   images      CampaignImage[]
   invitations Invitation[]
   offers      Offer[]

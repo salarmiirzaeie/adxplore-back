@@ -59,7 +59,7 @@ export class CampaignsController {
   @Get('browse')
   @ApiOperation({
     summary:
-      'Browse OPEN campaigns (influencer). Filters: category, city, q, forMe, invited',
+      'Browse approved OPEN campaigns in Explore (influencer). Filters: category, city, q, forMe, invited',
   })
   @ApiOkResponse({ type: CampaignResponse, isArray: true })
   browse(@CurrentUser() user: User, @Query() query: BrowseCampaignsQueryDto) {
@@ -69,7 +69,7 @@ export class CampaignsController {
   @Get(':id')
   @ApiOperation({
     summary:
-      'Get campaign (brand owner, or influencer if OPEN marketplace campaign)',
+      'Get campaign (brand owner, or influencer if approved OPEN marketplace campaign)',
   })
   @ApiOkResponse({ type: CampaignResponse })
   getOne(@CurrentUser() user: User, @Param('id') id: string) {

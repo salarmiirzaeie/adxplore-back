@@ -32,6 +32,7 @@ import {
   CAMPAIGN_MAX_IMAGES,
   UploadsService,
 } from '../uploads/uploads.service';
+import { resolveBrandStatus } from '../common/campaign-status';
 import { BrowseCampaignsQueryDto } from './dto/browse-campaigns-query.dto';
 import { CreateCampaignDto } from './dto/create-campaign.dto';
 import { UpdateCampaignDto } from './dto/update-campaign.dto';
@@ -65,6 +66,8 @@ export class CampaignsService {
       budgetMin: campaign.budgetMin,
       budgetMax: campaign.budgetMax,
       status: campaign.status,
+      rejectionReason: campaign.rejectionReason,
+      rejectedAt: campaign.rejectedAt,
       images: campaign.images
         .slice()
         .sort((a, b) => a.sortOrder - b.sortOrder)
@@ -144,7 +147,7 @@ export class CampaignsService {
     const { categories, category } = this.resolveCategories(dto);
     const { deliverables, deliverable } = this.resolveDeliverables(dto);
 
-    const status = dto.status ?? CampaignStatus.DRAFT;
+    const status = resolveBrandStatus(dto.status);
     if (status === CampaignStatus.CLOSED) {
       throw new BadRequestException(
         'نمی‌توان کمپین را در وضعیت بسته ایجاد کرد',
@@ -332,6 +335,14 @@ export class CampaignsService {
           )
         : null;
 
+    const nextStatus =
+      dto.status !== undefined
+        ? resolveBrandStatus(dto.status, existing.status)
+        : undefined;
+    const submittingForReview =
+      nextStatus === CampaignStatus.PENDING_REVIEW &&
+      existing.status !== CampaignStatus.PENDING_REVIEW;
+
     const campaign = await this.prisma.campaign.update({
       where: { id },
       data: {
@@ -354,7 +365,10 @@ export class CampaignsService {
           : {}),
         ...(dto.budgetMin !== undefined ? { budgetMin: dto.budgetMin } : {}),
         ...(dto.budgetMax !== undefined ? { budgetMax: dto.budgetMax } : {}),
-        ...(dto.status !== undefined ? { status: dto.status } : {}),
+        ...(nextStatus !== undefined ? { status: nextStatus } : {}),
+        ...(submittingForReview
+          ? { rejectionReason: null, rejectedAt: null }
+          : {}),
       },
       include: { images: { orderBy: { sortOrder: 'asc' } } },
     });
