@@ -23,6 +23,12 @@ export class ConversationOfferResponse {
   })
   canEdit!: boolean;
 
+  @ApiProperty({
+    description:
+      'True for the brand while the offer is REJECTED. They may undo the rejection or accept.',
+  })
+  canUndoReject!: boolean;
+
   @ApiProperty()
   updatedAt!: Date;
 }

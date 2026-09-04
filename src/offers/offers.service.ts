@@ -127,6 +127,8 @@ export class OffersService {
       status: offer.status,
       canEdit:
         offer.status === OfferStatus.PENDING && offer.influencerId === viewerId,
+      canUndoReject:
+        offer.status === OfferStatus.REJECTED && offer.brandId === viewerId,
       campaign: mapCampaignCategories(offer.campaign),
       brand: mapPartyCategories(offer.brand),
       influencer: mapPartyCategories(offer.influencer),
@@ -346,13 +348,60 @@ export class OffersService {
     if (!offer) {
       throw new NotFoundException('پیشنهاد پیدا نشد');
     }
-    if (offer.status !== OfferStatus.PENDING) {
-      throw new BadRequestException(
-        'فقط پیشنهادهای در انتظار قابل تغییر هستند',
-      );
-    }
 
     const next = dto.status;
+    const campaignTitle = offer.campaign.title;
+
+    if (next === OfferStatus.PENDING) {
+      if (user.id !== offer.brandId) {
+        throw new ForbiddenException(
+          'فقط برند می‌تواند رد پیشنهاد را لغو کند',
+        );
+      }
+      if (offer.status !== OfferStatus.REJECTED) {
+        throw new BadRequestException(
+          'فقط پیشنهاد ردشده را می‌توان دوباره به حالت در انتظار برگرداند',
+        );
+      }
+
+      const otherPending = await this.prisma.offer.findFirst({
+        where: {
+          campaignId: offer.campaignId,
+          influencerId: offer.influencerId,
+          status: OfferStatus.PENDING,
+          id: { not: offer.id },
+        },
+      });
+      if (otherPending) {
+        throw new BadRequestException(
+          'اینفلوئنسر پیشنهاد فعال دیگری برای این کمپین دارد',
+        );
+      }
+
+      const updated = await this.prisma.offer.update({
+        where: { id },
+        data: { status: OfferStatus.PENDING },
+        include: offerInclude,
+      });
+
+      await this.notifications.create(
+        offer.influencerId,
+        NotificationType.OFFER_REOPENED,
+        'رد پیشنهاد لغو شد',
+        `برند رد پیشنهاد کمپین «${campaignTitle}» را لغو کرد`,
+        `/app/messages/${offer.id}`,
+        offer.id,
+      );
+      await this.emitChatEvent(
+        offer.id,
+        user.id,
+        MessageKind.SYSTEM,
+        'رد پیشنهاد لغو شد',
+        { event: 'OFFER_REOPENED' },
+      );
+
+      return this.toPublic(updated, user.id);
+    }
 
     if (next === OfferStatus.CANCELLED) {
       if (user.id !== offer.influencerId) {
@@ -360,10 +409,34 @@ export class OffersService {
           'فقط اینفلوئنسر می‌تواند پیشنهاد را لغو کند',
         );
       }
-    } else if (next === OfferStatus.ACCEPTED || next === OfferStatus.REJECTED) {
+      if (offer.status !== OfferStatus.PENDING) {
+        throw new BadRequestException(
+          'فقط پیشنهادهای در انتظار قابل لغو هستند',
+        );
+      }
+    } else if (next === OfferStatus.REJECTED) {
       if (user.id !== offer.brandId) {
         throw new ForbiddenException(
-          'فقط برند می‌تواند پیشنهاد را قبول یا رد کند',
+          'فقط برند می‌تواند پیشنهاد را رد کند',
+        );
+      }
+      if (offer.status !== OfferStatus.PENDING) {
+        throw new BadRequestException(
+          'فقط پیشنهادهای در انتظار قابل رد هستند',
+        );
+      }
+    } else if (next === OfferStatus.ACCEPTED) {
+      if (user.id !== offer.brandId) {
+        throw new ForbiddenException(
+          'فقط برند می‌تواند پیشنهاد را قبول کند',
+        );
+      }
+      if (
+        offer.status !== OfferStatus.PENDING &&
+        offer.status !== OfferStatus.REJECTED
+      ) {
+        throw new BadRequestException(
+          'فقط پیشنهاد در انتظار یا ردشده قابل قبول است',
         );
       }
     } else {
@@ -376,7 +449,6 @@ export class OffersService {
       include: offerInclude,
     });
 
-    const campaignTitle = offer.campaign.title;
     if (next === OfferStatus.ACCEPTED) {
       await this.deals.createFromOffer(
         {

@@ -1,0 +1,1 @@
+-- Add OFFER_REOPENED to NotificationType (SQLite stores enums as TEXT)

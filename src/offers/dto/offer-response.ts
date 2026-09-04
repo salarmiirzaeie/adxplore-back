@@ -105,6 +105,12 @@ export class OfferResponse {
   })
   canEdit!: boolean;
 
+  @ApiProperty({
+    description:
+      'True when the current user is the brand and the offer is REJECTED. They may send PENDING to undo, or ACCEPTED to accept.',
+  })
+  canUndoReject!: boolean;
+
   @ApiProperty({ type: OfferCampaignResponse })
   campaign!: OfferCampaignResponse;
 

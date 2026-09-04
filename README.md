@@ -149,7 +149,7 @@ Phone is never exposed in these responses. Cards include `bio`.
 
 1. **Brand** creates an `OPEN` campaign, browses influencers, and sends an **invitation**.
 2. **Influencer** sees invitations and may send an **offer** (fee / message / deadline) only if they have a non-cancelled invitation to that campaign.
-3. While the offer is **pending**, the influencer can edit fee / message / deadline from the chat offer card. The **brand** accepts or rejects; the influencer may cancel.
+3. While the offer is **pending**, the influencer can edit fee / message / deadline from the chat offer card. The **brand** accepts or rejects; the influencer may cancel. After a rejection, the brand may undo it and accept.
 4. On **accept**, a **deal** is created automatically (`IN_PROGRESS`) and the influencer is notified (`DEAL_STARTED`).
 5. Influencer submits a deliverable; brand confirms, requests revision, or either party may cancel (before completion). The party who cancelled can re-enable the deal; the other party cannot.
 6. **In-app notifications** cover invitations, offers, and deal lifecycle.
@@ -185,7 +185,7 @@ Require `Authorization: Bearer <accessToken>`.
 | `GET` | `/v1/offers` | Brand: received; influencer: sent. Optional `?campaignId=` |
 | `GET` | `/v1/offers/:id` | Get one offer (party only) |
 | `PATCH` | `/v1/offers/:id/terms` | Influencer: edit fee / message / deadline while `PENDING` |
-| `PATCH` | `/v1/offers/:id` | Brand: `ACCEPTED` / `REJECTED`; influencer: `CANCELLED` |
+| `PATCH` | `/v1/offers/:id` | Brand: `ACCEPTED` / `REJECTED`; brand `PENDING` undoes a rejection; `ACCEPTED` also allowed from `REJECTED`; influencer: `CANCELLED` |
 
 ```json
 {
@@ -206,7 +206,7 @@ Edit pending terms (`PATCH /v1/offers/:id/terms`, influencer only):
 }
 ```
 
-Status: `PENDING` | `ACCEPTED` | `REJECTED` | `CANCELLED`. At most one pending offer per campaign+influencer pair (history of settled offers is allowed). Accepting an offer creates a linked deal.
+Status: `PENDING` | `ACCEPTED` | `REJECTED` | `CANCELLED`. At most one pending offer per campaign+influencer pair (history of settled offers is allowed). Accepting an offer creates a linked deal. After a brand **rejects**, they may undo with `{ "status": "PENDING" }` or accept with `{ "status": "ACCEPTED" }`. Responses include `canUndoReject`.
 
 While an offer is `PENDING`, the influencer can edit it from the chat offer card (`PATCH /v1/offers/:id/terms`). After the brand accepts or rejects (or the influencer cancels), `canEdit` is `false`. Conversation responses include an `offer` object (`fee`, `message`, `deadline`, `status`, `canEdit`) so the chat screen can render that card without a second fetch. Editing posts a system chat event `OFFER_UPDATED` and notifies the brand.
 
@@ -262,7 +262,7 @@ Require `Authorization: Bearer <accessToken>`.
 | `PATCH` | `/v1/notifications/:id/read` | Mark one as read |
 | `POST` | `/v1/notifications/read-all` | Mark all as read |
 
-Types: `INVITATION_RECEIVED`, `OFFER_RECEIVED`, `OFFER_UPDATED`, `OFFER_ACCEPTED`, `OFFER_REJECTED`, `OFFER_CANCELLED`, `DEAL_STARTED`, `DELIVERABLE_SUBMITTED`, `REVISION_REQUESTED`, `DEAL_COMPLETED`, `DEAL_CANCELLED`, `DEAL_REACTIVATED`.
+Types: `INVITATION_RECEIVED`, `OFFER_RECEIVED`, `OFFER_UPDATED`, `OFFER_ACCEPTED`, `OFFER_REJECTED`, `OFFER_CANCELLED`, `OFFER_REOPENED`, `DEAL_STARTED`, `DELIVERABLE_SUBMITTED`, `REVISION_REQUESTED`, `DEAL_COMPLETED`, `DEAL_CANCELLED`, `DEAL_REACTIVATED`.
 
 ## Wallet
 

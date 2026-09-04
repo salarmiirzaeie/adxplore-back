@@ -80,7 +80,7 @@ export class OffersController {
   @Patch(':id')
   @ApiOperation({
     summary:
-      'Update offer status: brand ACCEPTED/REJECTED; influencer CANCELLED',
+      'Update offer status: brand ACCEPTED/REJECTED; brand PENDING to undo rejection; influencer CANCELLED',
   })
   @ApiOkResponse({ type: OfferResponse })
   updateStatus(

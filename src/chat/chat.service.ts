@@ -233,6 +233,8 @@ export class ChatService {
         status: c.offer.status,
         canEdit:
           c.offer.status === OfferStatus.PENDING && c.influencerId === userId,
+        canUndoReject:
+          c.offer.status === OfferStatus.REJECTED && c.brandId === userId,
         updatedAt: c.offer.updatedAt,
       },
       lastMessage: last ? this.toMessage(last) : null,
