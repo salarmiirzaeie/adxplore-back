@@ -26,13 +26,21 @@ async function bootstrap() {
   );
 
   const corsOrigin = config.get<string>('CORS_ORIGIN', '');
-  const origins = corsOrigin
-    .split(',')
-    .map((o) => o.trim())
-    .filter(Boolean);
+  const allowedOrigins = expandCorsOrigins(corsOrigin);
 
   app.enableCors({
-    origin: origins.length > 0 ? origins : true,
+    origin: (origin, callback) => {
+      // Non-browser clients (curl, server-to-server) send no Origin.
+      if (!origin || allowedOrigins.size === 0) {
+        callback(null, true);
+        return;
+      }
+      if (allowedOrigins.has(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(null, false);
+    },
     credentials: true,
   });
 
@@ -72,6 +80,22 @@ async function bootstrap() {
   await app.listen(port, '0.0.0.0');
   console.log(`AdXplore API listening on http://localhost:${port}/v1`);
   console.log(`Swagger UI: http://localhost:${port}/docs`);
+}
+
+/** Allow both http and https for every host listed in CORS_ORIGIN. */
+function expandCorsOrigins(raw: string): Set<string> {
+  const expanded = new Set<string>();
+  for (const origin of raw.split(',').map((o) => o.trim()).filter(Boolean)) {
+    expanded.add(origin);
+    try {
+      const { host } = new URL(origin);
+      expanded.add(`http://${host}`);
+      expanded.add(`https://${host}`);
+    } catch {
+      // Keep the raw value if it is not a valid URL.
+    }
+  }
+  return expanded;
 }
 
 void bootstrap();
