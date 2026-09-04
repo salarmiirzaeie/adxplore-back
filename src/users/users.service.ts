@@ -328,11 +328,11 @@ export class UsersService {
   }
 
   async updatePhoto(user: User, file: Express.Multer.File) {
-    const relative = this.uploads.saveImage('avatars', file);
+    const relative = await this.uploads.saveImage('avatars', file);
     const photoUrl = this.uploads.toPublicUrl(relative);
 
     if (user.photoUrl) {
-      this.uploads.deleteByPublicUrl(user.photoUrl);
+      await this.uploads.deleteByPublicUrl(user.photoUrl);
     }
 
     const updated = await this.prisma.user.update({
@@ -344,7 +344,7 @@ export class UsersService {
 
   async removePhoto(user: User) {
     if (user.photoUrl) {
-      this.uploads.deleteByPublicUrl(user.photoUrl);
+      await this.uploads.deleteByPublicUrl(user.photoUrl);
     }
     const updated = await this.prisma.user.update({
       where: { id: user.id },

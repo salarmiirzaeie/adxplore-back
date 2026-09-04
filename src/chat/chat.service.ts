@@ -304,7 +304,7 @@ export class ChatService {
     let metadata: ChatEventMetadata | undefined;
 
     if (file) {
-      const saved = this.uploads.saveMedia('chat', file);
+      const saved = await this.uploads.saveMedia('chat', file);
       kind = saved.kind === 'VIDEO' ? MessageKind.VIDEO : MessageKind.IMAGE;
       if (!storedBody) {
         storedBody = kind === MessageKind.VIDEO ? 'ویدیو' : 'تصویر';

@@ -26,6 +26,7 @@
     "admin:ensure": "node scripts/ensure-admin.mjs"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1127.0",
     "@code-plate/iran-cities": "^1.0.2",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.4",

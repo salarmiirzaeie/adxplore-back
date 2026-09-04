@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  DeleteObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'crypto';
 import { existsSync, mkdirSync, unlinkSync, writeFileSync } from 'fs';
@@ -25,10 +30,48 @@ export type MediaKind = 'IMAGE' | 'VIDEO';
 
 @Injectable()
 export class UploadsService {
+  private readonly logger = new Logger(UploadsService.name);
   readonly rootDir: string;
+  private readonly s3?: S3Client;
+  private readonly bucket?: string;
+  private readonly s3PublicBase?: string;
 
   constructor(private readonly config: ConfigService) {
     this.rootDir = join(process.cwd(), 'uploads');
+
+    const endpoint = this.config.get<string>('S3_ENDPOINT')?.replace(/\/$/, '');
+    const accessKey = this.config.get<string>('S3_ACCESS_KEY');
+    const secretKey = this.config.get<string>('S3_SECRET_KEY');
+    const bucket = this.config.get<string>('S3_BUCKET');
+    const region = this.config.get<string>('S3_REGION', 'us-east-1');
+    const configured = [endpoint, accessKey, secretKey, bucket].filter(Boolean);
+
+    if (configured.length > 0 && configured.length < 4) {
+      throw new Error(
+        'Incomplete S3 config: set S3_ENDPOINT, S3_ACCESS_KEY, S3_SECRET_KEY, and S3_BUCKET',
+      );
+    }
+
+    if (endpoint && accessKey && secretKey && bucket) {
+      this.s3 = new S3Client({
+        region,
+        endpoint,
+        credentials: {
+          accessKeyId: accessKey,
+          secretAccessKey: secretKey,
+        },
+        forcePathStyle: true,
+        requestChecksumCalculation: 'WHEN_REQUIRED',
+        responseChecksumValidation: 'WHEN_REQUIRED',
+      });
+      this.bucket = bucket;
+      this.s3PublicBase = (
+        this.config.get<string>('S3_PUBLIC_URL') || `${endpoint}/${bucket}`
+      ).replace(/\/$/, '');
+      this.logger.log(`Uploads: S3 bucket ${bucket} at ${endpoint}`);
+      return;
+    }
+
     if (!existsSync(this.rootDir)) {
       mkdirSync(this.rootDir, { recursive: true });
     }
@@ -36,9 +79,10 @@ export class UploadsService {
       const dir = join(this.rootDir, sub);
       if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
     }
+    this.logger.log('Uploads: local disk (set S3_* env vars to use object storage)');
   }
 
-  private publicBase(): string {
+  private localPublicBase(): string {
     return (
       this.config.get<string>('PUBLIC_BASE_URL') ||
       `http://localhost:${this.config.get<number>('PORT', 3000)}`
@@ -47,11 +91,17 @@ export class UploadsService {
 
   toPublicUrl(relativePath: string): string {
     const clean = relativePath.replace(/^\/+/, '');
-    return `${this.publicBase()}/uploads/${clean}`;
+    if (this.s3PublicBase) {
+      return `${this.s3PublicBase}/${clean}`;
+    }
+    return `${this.localPublicBase()}/uploads/${clean}`;
   }
 
   relativeFromPublicUrl(url: string | null | undefined): string | null {
     if (!url) return null;
+    if (this.s3PublicBase && url.startsWith(`${this.s3PublicBase}/`)) {
+      return url.slice(this.s3PublicBase.length + 1);
+    }
     const marker = '/uploads/';
     const idx = url.indexOf(marker);
     if (idx === -1) return null;
@@ -100,27 +150,54 @@ export class UploadsService {
     return '.jpg';
   }
 
-  saveImage(folder: UploadFolder, file: Express.Multer.File): string {
+  async saveImage(folder: UploadFolder, file: Express.Multer.File): Promise<string> {
     this.assertImageFile(file);
     return this.writeFile(folder, file);
   }
 
-  saveMedia(
+  async saveMedia(
     folder: UploadFolder,
     file: Express.Multer.File,
-  ): { relative: string; kind: MediaKind } {
+  ): Promise<{ relative: string; kind: MediaKind }> {
     const kind = this.assertMediaFile(file);
-    return { relative: this.writeFile(folder, file), kind };
+    return { relative: await this.writeFile(folder, file), kind };
   }
 
-  private writeFile(folder: UploadFolder, file: Express.Multer.File): string {
+  private async writeFile(
+    folder: UploadFolder,
+    file: Express.Multer.File,
+  ): Promise<string> {
     const relative = `${folder}/${randomUUID()}${this.extForMime(file.mimetype)}`;
+    if (this.s3 && this.bucket) {
+      await this.s3.send(
+        new PutObjectCommand({
+          Bucket: this.bucket,
+          Key: relative,
+          Body: file.buffer,
+          ContentType: file.mimetype,
+        }),
+      );
+      return relative;
+    }
     writeFileSync(join(this.rootDir, relative), file.buffer);
     return relative;
   }
 
-  deleteRelative(relative: string | null | undefined) {
+  async deleteRelative(relative: string | null | undefined) {
     if (!relative) return;
+    if (this.s3 && this.bucket) {
+      try {
+        await this.s3.send(
+          new DeleteObjectCommand({
+            Bucket: this.bucket,
+            Key: relative,
+          }),
+        );
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
     const absolute = join(this.rootDir, relative);
     try {
       if (existsSync(absolute)) unlinkSync(absolute);
@@ -129,7 +206,7 @@ export class UploadsService {
     }
   }
 
-  deleteByPublicUrl(url: string | null | undefined) {
-    this.deleteRelative(this.relativeFromPublicUrl(url));
+  async deleteByPublicUrl(url: string | null | undefined) {
+    await this.deleteRelative(this.relativeFromPublicUrl(url));
   }
 }

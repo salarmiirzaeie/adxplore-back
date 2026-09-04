@@ -276,14 +276,14 @@ export class DealsService {
         throw new BadRequestException('آدرس محتوا الزامی است');
       }
       contentUrl = link;
-      this.uploads.deleteByPublicUrl(deal.contentUrl);
+      await this.uploads.deleteByPublicUrl(deal.contentUrl);
       if (proof) {
         this.uploads.assertImageFile(proof);
         if (deal.proofUrl) {
-          this.uploads.deleteByPublicUrl(deal.proofUrl);
+          await this.uploads.deleteByPublicUrl(deal.proofUrl);
         }
         proofUrl = this.uploads.toPublicUrl(
-          this.uploads.saveImage('deals', proof),
+          await this.uploads.saveImage('deals', proof),
         );
       }
     } else {
@@ -294,7 +294,7 @@ export class DealsService {
             : 'فایل تصویر الزامی است',
         );
       }
-      const saved = this.uploads.saveMedia('deals', contentFile);
+      const saved = await this.uploads.saveMedia('deals', contentFile);
       if (saved.kind !== kind) {
         throw new BadRequestException(
           kind === DealContentKind.VIDEO
@@ -302,9 +302,9 @@ export class DealsService {
             : 'فایل باید تصویر باشد',
         );
       }
-      this.uploads.deleteByPublicUrl(deal.contentUrl);
+      await this.uploads.deleteByPublicUrl(deal.contentUrl);
       if (deal.proofUrl) {
-        this.uploads.deleteByPublicUrl(deal.proofUrl);
+        await this.uploads.deleteByPublicUrl(deal.proofUrl);
       }
       contentUrl = this.uploads.toPublicUrl(saved.relative);
       proofUrl = null;

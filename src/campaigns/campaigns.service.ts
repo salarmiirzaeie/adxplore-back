@@ -420,7 +420,7 @@ export class CampaignsService {
       1;
 
     for (const file of toSave) {
-      const relative = this.uploads.saveImage('campaigns', file);
+      const relative = await this.uploads.saveImage('campaigns', file);
       const url = this.uploads.toPublicUrl(relative);
       await this.prisma.campaignImage.create({
         data: {
@@ -441,7 +441,7 @@ export class CampaignsService {
       throw new NotFoundException('تصویر پیدا نشد');
     }
 
-    this.uploads.deleteByPublicUrl(image.url);
+    await this.uploads.deleteByPublicUrl(image.url);
     await this.prisma.campaignImage.delete({ where: { id: imageId } });
 
     return this.getMine(user, campaignId);
