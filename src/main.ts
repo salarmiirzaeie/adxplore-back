@@ -58,6 +58,7 @@ async function bootstrap() {
     .addTag('wallets')
     .addTag('chat')
     .addTag('notifications')
+    .addTag('support')
     .addTag('admin')
     .build();
 

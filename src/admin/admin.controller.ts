@@ -26,6 +26,7 @@ import {
   ListInfluencerApprovalsQueryDto,
   RejectInfluencerDto,
 } from './dto/influencer-approval.dto';
+import { ListSupportTicketsQueryDto } from './dto/support-tickets.dto';
 
 @ApiTags('admin')
 @ApiBearerAuth('access-token')
@@ -131,5 +132,23 @@ export class AdminController {
   })
   rejectCampaign(@Param('id') id: string, @Body() dto: RejectCampaignDto) {
     return this.admin.rejectCampaign(id, dto);
+  }
+
+  @Get('support')
+  @ApiOperation({ summary: 'List support messages submitted from the panel' })
+  listSupportTickets(@Query() query: ListSupportTicketsQueryDto) {
+    return this.admin.listSupportTickets(query);
+  }
+
+  @Post('support/:id/read')
+  @ApiOperation({ summary: 'Mark a support message as read' })
+  markSupportTicketRead(@Param('id') id: string) {
+    return this.admin.markSupportTicketRead(id);
+  }
+
+  @Post('support/:id/resolve')
+  @ApiOperation({ summary: 'Mark a support message as reviewed / resolved' })
+  resolveSupportTicket(@Param('id') id: string) {
+    return this.admin.resolveSupportTicket(id);
   }
 }

@@ -8,6 +8,7 @@ import {
   CampaignStatus,
   DealStatus,
   InfluencerApprovalStatus,
+  SupportTicketStatus,
   InvitationStatus,
   NotificationType,
   PaymentStatus,
@@ -32,6 +33,7 @@ import {
   RejectCampaignDto,
 } from './dto/campaign-review.dto';
 import { ListInfluencerApprovalsQueryDto } from './dto/influencer-approval.dto';
+import { ListSupportTicketsQueryDto } from './dto/support-tickets.dto';
 
 @Injectable()
 export class AdminService {
@@ -53,6 +55,7 @@ export class AdminService {
       withdrawPending,
       pendingInfluencers,
       pendingCampaigns,
+      pendingSupport,
     ] = await Promise.all([
       this.prisma.user.count(),
       this.prisma.campaign.count(),
@@ -83,6 +86,9 @@ export class AdminService {
       this.prisma.campaign.count({
         where: { status: CampaignStatus.PENDING_REVIEW },
       }),
+      this.prisma.supportTicket.count({
+        where: { status: SupportTicketStatus.NEW },
+      }),
     ]);
 
     return {
@@ -94,6 +100,7 @@ export class AdminService {
       withdrawPending: withdrawPending.length,
       pendingInfluencers,
       pendingCampaigns,
+      pendingSupport,
     };
   }
 
@@ -530,6 +537,129 @@ export class AdminService {
       brand: campaign.brand,
       createdAt: campaign.createdAt,
       updatedAt: campaign.updatedAt,
+    };
+  }
+
+  async listSupportTickets(query: ListSupportTicketsQueryDto) {
+    const status =
+      query.status === 'ALL'
+        ? undefined
+        : (query.status ?? SupportTicketStatus.NEW);
+    const q = query.q?.trim();
+
+    const where: Prisma.SupportTicketWhereInput = {
+      ...(status ? { status } : {}),
+      ...(q
+        ? {
+            OR: [
+              { subject: { contains: q } },
+              { message: { contains: q } },
+              { phone: { contains: q } },
+              { user: { name: { contains: q } } },
+              { user: { phone: { contains: q } } },
+            ],
+          }
+        : {}),
+    };
+
+    const items = await this.prisma.supportTicket.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+      include: {
+        user: {
+          select: { id: true, phone: true, name: true, role: true },
+        },
+      },
+    });
+
+    return items.map((t) => this.toSupportTicket(t));
+  }
+
+  async markSupportTicketRead(id: string) {
+    const ticket = await this.prisma.supportTicket.findUnique({
+      where: { id },
+      include: {
+        user: {
+          select: { id: true, phone: true, name: true, role: true },
+        },
+      },
+    });
+    if (!ticket) {
+      throw new NotFoundException('پیام پشتیبانی پیدا نشد');
+    }
+    if (ticket.status !== SupportTicketStatus.NEW) {
+      return this.toSupportTicket(ticket);
+    }
+    const updated = await this.prisma.supportTicket.update({
+      where: { id },
+      data: {
+        status: SupportTicketStatus.READ,
+        readAt: new Date(),
+      },
+      include: {
+        user: {
+          select: { id: true, phone: true, name: true, role: true },
+        },
+      },
+    });
+    return this.toSupportTicket(updated);
+  }
+
+  async resolveSupportTicket(id: string) {
+    const ticket = await this.prisma.supportTicket.findUnique({
+      where: { id },
+    });
+    if (!ticket) {
+      throw new NotFoundException('پیام پشتیبانی پیدا نشد');
+    }
+    const now = new Date();
+    const updated = await this.prisma.supportTicket.update({
+      where: { id },
+      data: {
+        status: SupportTicketStatus.RESOLVED,
+        readAt: ticket.readAt ?? now,
+        resolvedAt: ticket.resolvedAt ?? now,
+      },
+      include: {
+        user: {
+          select: { id: true, phone: true, name: true, role: true },
+        },
+      },
+    });
+    return this.toSupportTicket(updated);
+  }
+
+  private toSupportTicket(t: {
+    id: string;
+    userId: string;
+    phone: string;
+    subject: string;
+    message: string;
+    status: SupportTicketStatus;
+    readAt: Date | null;
+    resolvedAt: Date | null;
+    createdAt: Date;
+    updatedAt: Date;
+    user: {
+      id: string;
+      phone: string;
+      name: string | null;
+      role: UserRole;
+    };
+  }) {
+    return {
+      id: t.id,
+      userId: t.userId,
+      phone: t.phone,
+      subject: t.subject,
+      message: t.message,
+      status: t.status,
+      readAt: t.readAt,
+      resolvedAt: t.resolvedAt,
+      createdAt: t.createdAt,
+      updatedAt: t.updatedAt,
+      user: t.user,
     };
   }
 }
