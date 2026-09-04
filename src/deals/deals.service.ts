@@ -22,7 +22,7 @@ import { ChatService } from '../chat/chat.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PaymentsService } from '../payments/payments.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { UploadsService } from '../uploads/uploads.service';
+import { UploadsService } from '../media/uploads.service';
 import { SubmitDeliverableDto } from './dto/submit-deliverable.dto';
 import { UpdateDealStatusDto } from './dto/update-deal-status.dto';
 

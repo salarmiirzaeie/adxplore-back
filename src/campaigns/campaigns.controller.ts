@@ -28,7 +28,7 @@ import type { User } from '../generated/prisma/client';
 import {
   CAMPAIGN_MAX_IMAGES,
   UPLOAD_MAX_BYTES,
-} from '../uploads/uploads.service';
+} from '../media/uploads.service';
 import { CampaignsService } from './campaigns.service';
 import { BrowseCampaignsQueryDto } from './dto/browse-campaigns-query.dto';
 import { CampaignResponse } from './dto/campaign-response';

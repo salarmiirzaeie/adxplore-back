@@ -24,7 +24,7 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { UserProfileResponse } from '../common/swagger-responses';
 import type { User } from '../generated/prisma/client';
-import { UPLOAD_MAX_BYTES } from '../uploads/uploads.service';
+import { UPLOAD_MAX_BYTES } from '../media/uploads.service';
 import { InstagramApprovalResponse } from './dto/instagram-approval-response';
 import { PublicProfileResponse } from './dto/public-profile-response';
 import { UpdateProfileDto } from './dto/update-profile.dto';

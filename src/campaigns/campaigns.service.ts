@@ -33,7 +33,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import {
   CAMPAIGN_MAX_IMAGES,
   UploadsService,
-} from '../uploads/uploads.service';
+} from '../media/uploads.service';
 import { resolveBrandStatus } from '../common/campaign-status';
 import { BrowseCampaignsQueryDto } from './dto/browse-campaigns-query.dto';
 import { CreateCampaignDto } from './dto/create-campaign.dto';

@@ -13,7 +13,7 @@ import { OffersModule } from './offers/offers.module';
 import { PaymentsModule } from './payments/payments.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { SmsModule } from './sms/sms.module';
-import { UploadsModule } from './uploads/uploads.module';
+import { UploadsModule } from './media/uploads.module';
 import { UsersModule } from './users/users.module';
 import { SupportModule } from './support/support.module';
 import { WalletsModule } from './wallets/wallets.module';

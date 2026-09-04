@@ -28,7 +28,7 @@ import {
   generateInstagramVerifyCode,
 } from '../common/instagram';
 import { PrismaService } from '../prisma/prisma.service';
-import { UploadsService } from '../uploads/uploads.service';
+import { UploadsService } from '../media/uploads.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Injectable()

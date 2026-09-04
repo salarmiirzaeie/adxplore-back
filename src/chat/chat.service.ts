@@ -13,7 +13,7 @@ import {
 } from '../generated/prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { UploadsService } from '../uploads/uploads.service';
+import { UploadsService } from '../media/uploads.service';
 
 export type ChatEventMetadata = Record<string, unknown>;
 

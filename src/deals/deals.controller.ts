@@ -24,7 +24,7 @@ import { memoryStorage } from 'multer';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import type { User } from '../generated/prisma/client';
-import { UPLOAD_MEDIA_MAX_BYTES } from '../uploads/uploads.service';
+import { UPLOAD_MEDIA_MAX_BYTES } from '../media/uploads.service';
 import { DealsService } from './deals.service';
 import { DealResponse } from './dto/deal-response';
 import { SubmitDeliverableDto } from './dto/submit-deliverable.dto';

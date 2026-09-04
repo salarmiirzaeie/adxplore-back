@@ -24,7 +24,7 @@ import { memoryStorage } from 'multer';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import type { User } from '../generated/prisma/client';
-import { UPLOAD_MEDIA_MAX_BYTES } from '../uploads/uploads.service';
+import { UPLOAD_MEDIA_MAX_BYTES } from '../media/uploads.service';
 import { ChatGateway } from './chat.gateway';
 import { ChatService } from './chat.service';
 import { ChatMessageResponse, ConversationResponse } from './dto/chat-response';
