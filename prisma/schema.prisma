@@ -141,6 +141,7 @@ enum NotificationType {
   REVISION_REQUESTED
   DEAL_COMPLETED
   DEAL_CANCELLED
+  DEAL_REACTIVATED
   PAYMENT_REQUIRED
   PAYMENT_HELD
   PAYMENT_RELEASED
@@ -340,11 +341,15 @@ model Deal {
   note          String?
   proofUrl      String?
   brandFeedback String?
-  submittedAt   DateTime?
-  completedAt   DateTime?
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-  payment       Payment?
+  submittedAt        DateTime?
+  completedAt        DateTime?
+  /// Set when status becomes CANCELLED; cleared on re-enable. Only this party may reactivate.
+  cancelledById      String?
+  /// Status to restore when the canceller re-enables the deal.
+  statusBeforeCancel DealStatus?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  payment            Payment?
 
   @@index([brandId, status])
   @@index([influencerId, status])

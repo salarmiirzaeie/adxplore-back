@@ -562,4 +562,70 @@ export class PaymentsService {
 
     return this.toPublic(payment);
   }
+
+  /**
+   * After the canceller re-enables a deal: restore PENDING payment, or
+   * re-hold escrow from the brand wallet if the fee had already been paid.
+   */
+  async restoreAfterReactivate(dealId: string, restoreStatus: DealStatus) {
+    const payment = await this.prisma.payment.findUnique({
+      where: { dealId },
+    });
+    if (!payment) {
+      if (restoreStatus === DealStatus.PENDING_PAYMENT) return null;
+      throw new BadRequestException('این همکاری قابل ازسرگیری نیست');
+    }
+
+    if (restoreStatus === DealStatus.PENDING_PAYMENT) {
+      if (
+        payment.status === PaymentStatus.FAILED ||
+        payment.status === PaymentStatus.PENDING
+      ) {
+        return this.toPublic(
+          await this.prisma.payment.update({
+            where: { id: payment.id },
+            data: { status: PaymentStatus.PENDING, errorMessage: null },
+          }),
+        );
+      }
+      return this.toPublic(payment);
+    }
+
+    if (payment.status === PaymentStatus.HELD) {
+      return this.toPublic(payment);
+    }
+
+    if (
+      payment.status === PaymentStatus.REFUNDED ||
+      payment.status === PaymentStatus.FAILED
+    ) {
+      try {
+        await this.wallets.holdEscrowFromBalance({
+          brandId: payment.brandId,
+          amountToman: payment.amountToman,
+          dealId,
+          paymentId: payment.id,
+        });
+      } catch (err) {
+        if (err instanceof BadRequestException) {
+          throw new BadRequestException(
+            'موجودی کیف پول برند برای ازسرگیری همکاری کافی نیست',
+          );
+        }
+        throw err;
+      }
+
+      return this.toPublic(
+        await this.prisma.payment.update({
+          where: { id: payment.id },
+          data: {
+            status: PaymentStatus.HELD,
+            errorMessage: null,
+          },
+        }),
+      );
+    }
+
+    throw new BadRequestException('این همکاری قابل ازسرگیری نیست');
+  }
 }

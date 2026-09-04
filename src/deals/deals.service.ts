@@ -47,6 +47,8 @@ type DealWithRelations = {
   brandFeedback: string | null;
   submittedAt: Date | null;
   completedAt: Date | null;
+  cancelledById: string | null;
+  statusBeforeCancel: DealStatus | null;
   createdAt: Date;
   updatedAt: Date;
   campaign: {
@@ -119,7 +121,7 @@ export class DealsService {
     }
   }
 
-  toPublic(deal: DealWithRelations) {
+  toPublic(deal: DealWithRelations, viewerId?: string) {
     return {
       id: deal.id,
       offerId: deal.offerId,
@@ -128,6 +130,11 @@ export class DealsService {
       influencerId: deal.influencerId,
       fee: deal.fee,
       status: deal.status,
+      cancelledById: deal.cancelledById,
+      canReactivate:
+        deal.status === DealStatus.CANCELLED &&
+        Boolean(deal.cancelledById) &&
+        deal.cancelledById === viewerId,
       contentKind:
         deal.contentKind ??
         (deal.contentUrl ? DealContentKind.LINK : null),
@@ -214,7 +221,7 @@ export class DealsService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return deals.map((d) => this.toPublic(d));
+    return deals.map((d) => this.toPublic(d, user.id));
   }
 
   async getOne(user: User, id: string) {
@@ -228,7 +235,7 @@ export class DealsService {
     if (deal.brandId !== user.id && deal.influencerId !== user.id) {
       throw new ForbiddenException('دسترسی به این همکاری ندارید');
     }
-    return this.toPublic(deal);
+    return this.toPublic(deal, user.id);
   }
 
   async submitDeliverable(
@@ -341,7 +348,7 @@ export class DealsService {
       },
     );
 
-    return this.toPublic(updated);
+    return this.toPublic(updated, user.id);
   }
 
   private resolveContentKind(
@@ -409,7 +416,7 @@ export class DealsService {
 
       await this.payments.markReleased(deal.id);
 
-      return this.toPublic(updated);
+      return this.toPublic(updated, user.id);
     }
 
     if (next === DealStatus.REVISION_REQUESTED) {
@@ -458,7 +465,60 @@ export class DealsService {
         },
       );
 
-      return this.toPublic(updated);
+      return this.toPublic(updated, user.id);
+    }
+
+    if (next === DealStatus.IN_PROGRESS) {
+      if (deal.status !== DealStatus.CANCELLED) {
+        throw new BadRequestException(
+          'فقط همکاری لغوشده قابل فعال‌سازی است',
+        );
+      }
+      if (!deal.cancelledById || deal.cancelledById !== user.id) {
+        throw new ForbiddenException(
+          'فقط کسی که همکاری را لغو کرده می‌تواند آن را فعال کند',
+        );
+      }
+
+      const restoreStatus =
+        deal.statusBeforeCancel &&
+        deal.statusBeforeCancel !== DealStatus.CANCELLED
+          ? deal.statusBeforeCancel
+          : DealStatus.IN_PROGRESS;
+
+      await this.payments.restoreAfterReactivate(deal.id, restoreStatus);
+
+      const updated = await this.prisma.deal.update({
+        where: { id },
+        data: {
+          status: restoreStatus,
+          cancelledById: null,
+          statusBeforeCancel: null,
+        },
+        include: dealInclude,
+      });
+
+      const otherPartyId =
+        user.id === deal.brandId ? deal.influencerId : deal.brandId;
+
+      await this.notifications.create(
+        otherPartyId,
+        NotificationType.DEAL_REACTIVATED,
+        'همکاری ازسر گرفته شد',
+        `همکاری کمپین «${campaignTitle}» دوباره فعال شد`,
+        `/app/messages/${deal.offerId}`,
+        deal.id,
+      );
+
+      await this.emitChatEvent(
+        deal.offerId,
+        user.id,
+        MessageKind.SYSTEM,
+        'همکاری ازسر گرفته شد',
+        { event: 'DEAL_REACTIVATED', dealId: deal.id },
+      );
+
+      return this.toPublic(updated, user.id);
     }
 
     if (next === DealStatus.CANCELLED) {
@@ -486,7 +546,11 @@ export class DealsService {
 
       const updated = await this.prisma.deal.update({
         where: { id },
-        data: { status: DealStatus.CANCELLED },
+        data: {
+          status: DealStatus.CANCELLED,
+          cancelledById: user.id,
+          statusBeforeCancel: deal.status,
+        },
         include: dealInclude,
       });
 
@@ -509,10 +573,14 @@ export class DealsService {
         user.id,
         MessageKind.SYSTEM,
         'همکاری لغو شد',
-        { event: 'DEAL_CANCELLED', dealId: deal.id },
+        {
+          event: 'DEAL_CANCELLED',
+          dealId: deal.id,
+          cancelledById: user.id,
+        },
       );
 
-      return this.toPublic(updated);
+      return this.toPublic(updated, user.id);
     }
 
     throw new BadRequestException('وضعیت نامعتبر است');

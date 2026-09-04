@@ -151,7 +151,7 @@ Phone is never exposed in these responses. Cards include `bio`.
 2. **Influencer** sees invitations and may send an **offer** (fee / message / deadline) only if they have a non-cancelled invitation to that campaign.
 3. While the offer is **pending**, the influencer can edit fee / message / deadline from the chat offer card. The **brand** accepts or rejects; the influencer may cancel.
 4. On **accept**, a **deal** is created automatically (`IN_PROGRESS`) and the influencer is notified (`DEAL_STARTED`).
-5. Influencer submits a deliverable; brand confirms, requests revision, or either party may cancel (before completion).
+5. Influencer submits a deliverable; brand confirms, requests revision, or either party may cancel (before completion). The party who cancelled can re-enable the deal; the other party cannot.
 6. **In-app notifications** cover invitations, offers, and deal lifecycle.
 
 ### Invitations
@@ -219,7 +219,7 @@ Require `Authorization: Bearer <accessToken>`. Created automatically when a bran
 | `GET` | `/v1/deals` | Brand or influencer: my deals. Optional `?campaignId=` |
 | `GET` | `/v1/deals/:id` | Get one deal (party only) |
 | `POST` | `/v1/deals/:id/deliverable` | Influencer submits deliverable (multipart or JSON) |
-| `PATCH` | `/v1/deals/:id` | Brand: `COMPLETED` / `REVISION_REQUESTED` / `CANCELLED`; influencer: `CANCELLED` |
+| `PATCH` | `/v1/deals/:id` | Brand: `COMPLETED` / `REVISION_REQUESTED` / `CANCELLED`; influencer: `CANCELLED`; canceller: `IN_PROGRESS` to re-enable |
 
 Submit deliverable (`multipart/form-data` or JSON):
 
@@ -238,11 +238,18 @@ Update status:
 { "status": "REVISION_REQUESTED", "brandFeedback": "لطفاً لوگو را واضح‌تر نشان دهید" }
 ```
 
+Re-enable (only the party who cancelled):
+
+```json
+{ "status": "IN_PROGRESS" }
+```
+
 - Brand `COMPLETED` — from `DELIVERED`
 - Brand `REVISION_REQUESTED` — from `DELIVERED` (`brandFeedback` required)
-- Brand or influencer `CANCELLED` — from `IN_PROGRESS` or `REVISION_REQUESTED` only
+- Brand or influencer `CANCELLED` — from `PENDING_PAYMENT`, `IN_PROGRESS`, or `REVISION_REQUESTED` (brand cannot cancel after content is published)
+- The party who cancelled may send `IN_PROGRESS` to re-enable; the other party cannot. Response includes `cancelledById` and `canReactivate`.
 
-Status: `IN_PROGRESS` | `DELIVERED` | `REVISION_REQUESTED` | `COMPLETED` | `CANCELLED`.
+Status: `PENDING_PAYMENT` | `IN_PROGRESS` | `DELIVERED` | `REVISION_REQUESTED` | `COMPLETED` | `CANCELLED`.
 
 ### Notifications
 
@@ -255,7 +262,7 @@ Require `Authorization: Bearer <accessToken>`.
 | `PATCH` | `/v1/notifications/:id/read` | Mark one as read |
 | `POST` | `/v1/notifications/read-all` | Mark all as read |
 
-Types: `INVITATION_RECEIVED`, `OFFER_RECEIVED`, `OFFER_UPDATED`, `OFFER_ACCEPTED`, `OFFER_REJECTED`, `OFFER_CANCELLED`, `DEAL_STARTED`, `DELIVERABLE_SUBMITTED`, `REVISION_REQUESTED`, `DEAL_COMPLETED`, `DEAL_CANCELLED`.
+Types: `INVITATION_RECEIVED`, `OFFER_RECEIVED`, `OFFER_UPDATED`, `OFFER_ACCEPTED`, `OFFER_REJECTED`, `OFFER_CANCELLED`, `DEAL_STARTED`, `DELIVERABLE_SUBMITTED`, `REVISION_REQUESTED`, `DEAL_COMPLETED`, `DEAL_CANCELLED`, `DEAL_REACTIVATED`.
 
 ## Wallet
 

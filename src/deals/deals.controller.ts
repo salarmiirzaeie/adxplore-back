@@ -104,7 +104,7 @@ export class DealsController {
   @Patch(':id')
   @ApiOperation({
     summary:
-      'Update deal status: brand COMPLETED / REVISION_REQUESTED / CANCELLED (before content); influencer CANCELLED',
+      'Update deal status: brand COMPLETED / REVISION_REQUESTED / CANCELLED (before content); influencer CANCELLED; canceller IN_PROGRESS to re-enable',
   })
   @ApiOkResponse({ type: DealResponse })
   updateStatus(

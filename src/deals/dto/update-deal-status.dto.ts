@@ -12,12 +12,15 @@ const DEAL_STATUS_UPDATES = [
   DealStatus.COMPLETED,
   DealStatus.REVISION_REQUESTED,
   DealStatus.CANCELLED,
+  DealStatus.IN_PROGRESS,
 ] as const;
 
 export class UpdateDealStatusDto {
   @ApiProperty({
     enum: DEAL_STATUS_UPDATES,
     example: DealStatus.COMPLETED,
+    description:
+      'IN_PROGRESS re-enables a CANCELLED deal, and only the party who cancelled may send it.',
   })
   @IsIn(DEAL_STATUS_UPDATES)
   status!: (typeof DEAL_STATUS_UPDATES)[number];

@@ -97,6 +97,18 @@ export class DealResponse {
   @ApiProperty({ enum: DealStatus })
   status!: DealStatus;
 
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'User id of the party who cancelled. Null when the deal is not cancelled.',
+  })
+  cancelledById!: string | null;
+
+  @ApiProperty({
+    description:
+      'True when the current user cancelled this deal and may re-enable it with status IN_PROGRESS.',
+  })
+  canReactivate!: boolean;
+
   @ApiPropertyOptional({ enum: DealContentKind, nullable: true })
   contentKind!: DealContentKind | null;
 
