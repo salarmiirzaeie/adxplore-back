@@ -1,6 +1,0 @@
--- AlterTable
-ALTER TABLE "User" ADD COLUMN "businessSize" TEXT;
-ALTER TABLE "User" ADD COLUMN "category" TEXT;
-ALTER TABLE "User" ADD COLUMN "city" TEXT;
-ALTER TABLE "User" ADD COLUMN "goal" TEXT;
-ALTER TABLE "User" ADD COLUMN "website" TEXT;

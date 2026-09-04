@@ -38,10 +38,13 @@ lerna-debug.log*
 # Env & secrets
 .env
 .env.local
+.env.production
 .env.*.local
 
-# Prisma / SQLite
+# Prisma generated client
 /src/generated/prisma
+
+# Local SQLite leftovers
 *.db
 *.db-journal
 prisma/*.db

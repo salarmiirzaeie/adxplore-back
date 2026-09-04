@@ -5,9 +5,8 @@
  */
 import 'dotenv/config';
 import bcrypt from 'bcryptjs';
-import Database from 'better-sqlite3';
 import crypto from 'crypto';
-import path from 'path';
+import pg from 'pg';
 
 const ADMIN_PHONE = process.env.ADMIN_PHONE ?? '09035128132';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? 'Soheyl@9143073321';
@@ -30,24 +29,44 @@ if (!url) {
   process.exit(1);
 }
 
-const dbPath = path.resolve(process.cwd(), url.replace(/^file:/, ''));
-const db = new Database(dbPath);
-const phone = normalizeIranPhone(ADMIN_PHONE);
-const passwordHash = bcrypt.hashSync(ADMIN_PASSWORD, 12);
-const now = new Date().toISOString();
+async function main() {
+  const client = new pg.Client({ connectionString: url });
+  await client.connect();
+  const phone = normalizeIranPhone(ADMIN_PHONE);
+  const passwordHash = bcrypt.hashSync(ADMIN_PASSWORD, 12);
 
-const existing = db.prepare('SELECT id FROM User WHERE phone = ?').get(phone);
-if (existing) {
-  db.prepare(
-    `UPDATE User SET role = 'ADMIN', passwordHash = ?, name = ?, updatedAt = ? WHERE id = ?`,
-  ).run(passwordHash, ADMIN_NAME, now, existing.id);
-  console.log(`Admin updated: ${phone} id=${existing.id}`);
-} else {
-  const id = crypto.randomBytes(12).toString('hex');
-  db.prepare(
-    `INSERT INTO User (id, phone, passwordHash, name, role, categories, createdAt, updatedAt)
-     VALUES (?, ?, ?, ?, 'ADMIN', '[]', ?, ?)`,
-  ).run(id, phone, passwordHash, ADMIN_NAME, now, now);
-  console.log(`Admin created: ${phone} id=${id}`);
+  try {
+    const existing = await client.query(
+      `SELECT id FROM "User" WHERE phone = $1`,
+      [phone],
+    );
+    if (existing.rows[0]) {
+      await client.query(
+        `UPDATE "User"
+         SET role = 'ADMIN'::"UserRole",
+             "passwordHash" = $1,
+             name = $2,
+             "updatedAt" = NOW()
+         WHERE id = $3`,
+        [passwordHash, ADMIN_NAME, existing.rows[0].id],
+      );
+      console.log(`Admin updated: ${phone} id=${existing.rows[0].id}`);
+      return;
+    }
+
+    const id = crypto.randomBytes(12).toString('hex');
+    await client.query(
+      `INSERT INTO "User" (id, phone, "passwordHash", name, role, categories, "createdAt", "updatedAt")
+       VALUES ($1, $2, $3, $4, 'ADMIN'::"UserRole", '[]'::jsonb, NOW(), NOW())`,
+      [id, phone, passwordHash, ADMIN_NAME],
+    );
+    console.log(`Admin created: ${phone} id=${id}`);
+  } finally {
+    await client.end();
+  }
 }
-db.close();
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
