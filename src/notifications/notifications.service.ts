@@ -4,11 +4,15 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { NotificationType, type User } from '../generated/prisma/client';
+import { FcmService } from '../fcm/fcm.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class NotificationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly fcm: FcmService,
+  ) {}
 
   toPublic(n: {
     id: string;
@@ -51,6 +55,13 @@ export class NotificationsService {
         linkPath: linkPath ?? null,
         entityId: entityId ?? null,
       },
+    });
+    void this.fcm.notifyUser(userId, {
+      title,
+      body,
+      url: linkPath ?? '/app/notifications',
+      type,
+      notificationId: n.id,
     });
     return this.toPublic(n);
   }

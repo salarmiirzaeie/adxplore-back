@@ -163,6 +163,10 @@ enum NotificationType {
   CAMPAIGN_REJECTED
 }
 
+enum PushPlatform {
+  WEB
+}
+
 model User {
   id                   String         @id @default(cuid())
   phone                String         @unique
@@ -205,6 +209,7 @@ model User {
   paymentsAsInfluencer Payment[]      @relation("PaymentInfluencer")
   wallet               Wallet?
   notifications        Notification[]
+  pushTokens           PushToken[]
   conversationsAsBrand       Conversation[] @relation("ConversationBrand")
   conversationsAsInfluencer  Conversation[] @relation("ConversationInfluencer")
   messagesSent               Message[]
@@ -458,6 +463,18 @@ model Notification {
   createdAt DateTime         @default(now())
 
   @@index([userId, readAt, createdAt])
+}
+
+model PushToken {
+  id        String       @id @default(cuid())
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String       @unique
+  platform  PushPlatform @default(WEB)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@index([userId])
 }
 
 model SupportTicket {

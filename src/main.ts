@@ -66,6 +66,7 @@ async function bootstrap() {
     .addTag('wallets')
     .addTag('chat')
     .addTag('notifications')
+    .addTag('push-tokens')
     .addTag('support')
     .addTag('admin')
     .build();
@@ -85,7 +86,10 @@ async function bootstrap() {
 /** Allow both http and https for every host listed in CORS_ORIGIN. */
 function expandCorsOrigins(raw: string): Set<string> {
   const expanded = new Set<string>();
-  for (const origin of raw.split(',').map((o) => o.trim()).filter(Boolean)) {
+  for (const origin of raw
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean)) {
     expanded.add(origin);
     try {
       const { host } = new URL(origin);

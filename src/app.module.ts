@@ -10,6 +10,7 @@ import { InfluencersModule } from './influencers/influencers.module';
 import { InvitationsModule } from './invitations/invitations.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { OffersModule } from './offers/offers.module';
+import { PushTokensModule } from './push-tokens/push-tokens.module';
 import { PaymentsModule } from './payments/payments.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { SmsModule } from './sms/sms.module';
@@ -32,6 +33,7 @@ import { WalletsModule } from './wallets/wallets.module';
     CampaignsModule,
     InfluencersModule,
     NotificationsModule,
+    PushTokensModule,
     InvitationsModule,
     OffersModule,
     DealsModule,

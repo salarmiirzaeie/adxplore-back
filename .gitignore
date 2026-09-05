@@ -40,6 +40,9 @@ lerna-debug.log*
 .env.local
 .env.production
 .env.*.local
+firebase-adminsdk*.json
+*-firebase-adminsdk-*.json
+/secrets/
 
 # Prisma generated client
 /src/generated/prisma
