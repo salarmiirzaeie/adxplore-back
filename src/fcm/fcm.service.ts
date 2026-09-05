@@ -99,14 +99,17 @@ export class FcmService {
   private initApp(): App | null {
     if (getApps().length > 0) return getApps()[0] ?? null;
 
-    const json = this.config.get<string>('FIREBASE_SERVICE_ACCOUNT_JSON');
-    if (json?.trim()) {
+    const rawAccount =
+      this.config.get<string>('FIREBASE_SERVICE_ACCOUNT_B64') ||
+      this.config.get<string>('FIREBASE_SERVICE_ACCOUNT_JSON');
+    if (rawAccount?.trim()) {
       try {
-        const parsed = JSON.parse(json) as ServiceAccount;
-        return initializeApp({ credential: cert(parsed) });
+        return initializeApp({
+          credential: cert(parseServiceAccount(rawAccount)),
+        });
       } catch (err) {
         this.logger.error(
-          'FIREBASE_SERVICE_ACCOUNT_JSON is not valid JSON',
+          'FIREBASE_SERVICE_ACCOUNT_JSON / B64 is not valid',
           err,
         );
         return null;
@@ -161,4 +164,18 @@ export class FcmService {
       return null;
     }
   }
+}
+
+function parseServiceAccount(raw: string): ServiceAccount {
+  let value = raw.trim();
+  if (
+    (value.startsWith("'") && value.endsWith("'")) ||
+    (value.startsWith('"') && value.endsWith('"'))
+  ) {
+    value = value.slice(1, -1);
+  }
+  if (!value.startsWith('{')) {
+    value = Buffer.from(value, 'base64').toString('utf8');
+  }
+  return JSON.parse(value) as ServiceAccount;
 }
