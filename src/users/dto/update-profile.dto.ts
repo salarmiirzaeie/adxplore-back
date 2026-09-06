@@ -76,7 +76,7 @@ export class UpdateProfileDto {
     maxLength: 1000,
     nullable: true,
     description:
-      'About the brand or influencer. Shown on public profiles. Pass null to clear.',
+      'About the brand or influencer. Shown to the other party. For influencers, used to convince brands. Pass null to clear.',
   })
   @IsOptional()
   @ValidateIf((_, value) => value !== null)

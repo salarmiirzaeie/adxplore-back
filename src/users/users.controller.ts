@@ -6,11 +6,12 @@ import {
   Patch,
   Post,
   UploadedFile,
+  UploadedFiles,
   UseGuards,
   UseInterceptors,
   Body,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import {
   ApiBearerAuth,
   ApiBody,
@@ -22,6 +23,7 @@ import {
 import { memoryStorage } from 'multer';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AUDIENCE_PROOF_MAX_IMAGES } from '../common/audience-proof';
 import { UserProfileResponse } from '../common/swagger-responses';
 import type { User } from '../generated/prisma/client';
 import { UPLOAD_MAX_BYTES } from '../media/uploads.service';
@@ -41,7 +43,7 @@ export class UsersController {
   @ApiOperation({ summary: 'Get current user profile' })
   @ApiOkResponse({ type: UserProfileResponse })
   me(@CurrentUser() user: User) {
-    return this.users.toPublic(user);
+    return this.users.serialize(user);
   }
 
   @Get('me/instagram-approval')
@@ -102,6 +104,48 @@ export class UsersController {
   @ApiOkResponse({ type: UserProfileResponse })
   removePhoto(@CurrentUser() user: User) {
     return this.users.removePhoto(user);
+  }
+
+  @Post('me/audience-proofs')
+  @ApiOperation({
+    summary:
+      'Upload Instagram insights / audience screenshots (influencer). Shown to brands.',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        files: {
+          type: 'array',
+          items: { type: 'string', format: 'binary' },
+        },
+      },
+      required: ['files'],
+    },
+  })
+  @ApiOkResponse({ type: UserProfileResponse })
+  @UseInterceptors(
+    FilesInterceptor('files', AUDIENCE_PROOF_MAX_IMAGES, {
+      storage: memoryStorage(),
+      limits: { fileSize: UPLOAD_MAX_BYTES },
+    }),
+  )
+  addAudienceProofs(
+    @CurrentUser() user: User,
+    @UploadedFiles() files: Express.Multer.File[],
+  ) {
+    return this.users.addAudienceProofs(user, files);
+  }
+
+  @Delete('me/audience-proofs/:proofId')
+  @ApiOperation({ summary: 'Remove an audience / analytics screenshot' })
+  @ApiOkResponse({ type: UserProfileResponse })
+  removeAudienceProof(
+    @CurrentUser() user: User,
+    @Param('proofId') proofId: string,
+  ) {
+    return this.users.removeAudienceProof(user, proofId);
   }
 
   @Get(':id/profile')

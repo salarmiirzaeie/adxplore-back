@@ -1,3 +1,5 @@
+import { audienceProofSelect } from './audience-proof';
+
 /** Shared Prisma select for brand/influencer party cards on invitations & offers. */
 export const partySelect = {
   id: true,
@@ -10,6 +12,10 @@ export const partySelect = {
   city: true,
   province: true,
   followerRange: true,
+  audienceProofs: {
+    select: audienceProofSelect,
+    orderBy: { sortOrder: 'asc' as const },
+  },
 } as const;
 
 /** Brand snippet on campaign browse / detail for influencer profile pages. */

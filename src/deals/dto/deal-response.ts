@@ -7,6 +7,7 @@ import {
   DeliverableType,
   FollowerRange,
 } from '../../generated/prisma/client';
+import { AudienceProofResponse } from '../../users/dto/audience-proof-response';
 
 export class DealPartyResponse {
   @ApiProperty()
@@ -38,6 +39,9 @@ export class DealPartyResponse {
 
   @ApiPropertyOptional({ enum: FollowerRange, nullable: true })
   followerRange!: FollowerRange | null;
+
+  @ApiProperty({ type: AudienceProofResponse, isArray: true })
+  audienceProofs!: AudienceProofResponse[];
 }
 
 export class DealCampaignResponse {

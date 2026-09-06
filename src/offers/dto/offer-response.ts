@@ -6,6 +6,7 @@ import {
   FollowerRange,
   OfferStatus,
 } from '../../generated/prisma/client';
+import { AudienceProofResponse } from '../../users/dto/audience-proof-response';
 
 export class OfferPartyResponse {
   @ApiProperty()
@@ -37,6 +38,9 @@ export class OfferPartyResponse {
 
   @ApiPropertyOptional({ enum: FollowerRange, nullable: true })
   followerRange!: FollowerRange | null;
+
+  @ApiProperty({ type: AudienceProofResponse, isArray: true })
+  audienceProofs!: AudienceProofResponse[];
 }
 
 export class OfferCampaignResponse {

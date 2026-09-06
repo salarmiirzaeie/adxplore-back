@@ -76,6 +76,7 @@ type DealWithRelations = {
     city: string | null;
     province: string | null;
     followerRange: string | null;
+    audienceProofs?: { id: string; url: string; sortOrder: number }[];
   };
   influencer: {
     id: string;
@@ -88,6 +89,7 @@ type DealWithRelations = {
     city: string | null;
     province: string | null;
     followerRange: string | null;
+    audienceProofs?: { id: string; url: string; sortOrder: number }[];
   };
 };
 

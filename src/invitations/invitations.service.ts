@@ -74,6 +74,7 @@ export class InvitationsService {
       city: string | null;
       province: string | null;
       followerRange: string | null;
+      audienceProofs?: { id: string; url: string; sortOrder: number }[];
     };
     influencer: {
       id: string;
@@ -86,6 +87,7 @@ export class InvitationsService {
       city: string | null;
       province: string | null;
       followerRange: string | null;
+      audienceProofs?: { id: string; url: string; sortOrder: number }[];
     };
   }) {
     return {

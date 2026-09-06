@@ -7,6 +7,7 @@ import {
   InfluencerApprovalStatus,
   UserRole,
 } from '../generated/prisma/client';
+import { AudienceProofResponse } from '../users/dto/audience-proof-response';
 
 export class RequestOtpResponse {
   @ApiProperty({ example: true })
@@ -67,6 +68,9 @@ export class AuthUserResponse {
 
   @ApiPropertyOptional({ enum: FollowerRange, nullable: true })
   followerRange!: FollowerRange | null;
+
+  @ApiProperty({ type: AudienceProofResponse, isArray: true })
+  audienceProofs!: AudienceProofResponse[];
 
   @ApiPropertyOptional({
     enum: InfluencerApprovalStatus,
@@ -159,6 +163,9 @@ export class UserProfileResponse {
 
   @ApiPropertyOptional({ enum: FollowerRange, nullable: true })
   followerRange!: FollowerRange | null;
+
+  @ApiProperty({ type: AudienceProofResponse, isArray: true })
+  audienceProofs!: AudienceProofResponse[];
 
   @ApiPropertyOptional({
     enum: InfluencerApprovalStatus,

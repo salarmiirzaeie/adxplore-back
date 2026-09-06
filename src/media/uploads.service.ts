@@ -24,8 +24,9 @@ export const VIDEO_MIME = new Set([
 ]);
 export const UPLOAD_MIME = IMAGE_MIME;
 export const CAMPAIGN_MAX_IMAGES = 8;
+export { AUDIENCE_PROOF_MAX_IMAGES } from '../common/audience-proof';
 
-export type UploadFolder = 'avatars' | 'campaigns' | 'deals' | 'chat';
+export type UploadFolder = 'avatars' | 'campaigns' | 'deals' | 'chat' | 'audience';
 export type MediaKind = 'IMAGE' | 'VIDEO';
 
 @Injectable()
@@ -75,7 +76,7 @@ export class UploadsService {
     if (!existsSync(this.rootDir)) {
       mkdirSync(this.rootDir, { recursive: true });
     }
-    for (const sub of ['avatars', 'campaigns', 'deals', 'chat'] as const) {
+    for (const sub of ['avatars', 'campaigns', 'deals', 'chat', 'audience'] as const) {
       const dir = join(this.rootDir, sub);
       if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
     }

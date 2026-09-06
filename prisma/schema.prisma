@@ -214,8 +214,21 @@ model User {
   conversationsAsInfluencer  Conversation[] @relation("ConversationInfluencer")
   messagesSent               Message[]
   supportTickets             SupportTicket[]
+  audienceProofs             AudienceProof[]
 
   @@index([role, approvalStatus])
+}
+
+/// Instagram insights / audience screenshots that help brands accept an offer
+model AudienceProof {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  url       String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([userId, sortOrder])
 }
 
 model Campaign {

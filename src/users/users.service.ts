@@ -11,6 +11,12 @@ import {
   type User,
 } from '../generated/prisma/client';
 import {
+  AUDIENCE_PROOF_MAX_IMAGES,
+  audienceProofSelect,
+  mapAudienceProofs,
+  type AudienceProofCard,
+} from '../common/audience-proof';
+import {
   normalizeCategories,
   parseCategories,
   primaryCategory,
@@ -46,7 +52,7 @@ export class UsersService {
     );
   }
 
-  toPublic(user: User) {
+  toPublic(user: User, audienceProofs: AudienceProofCard[] = []) {
     const categories = parseCategories(user.categories, user.category);
     return {
       id: user.id,
@@ -63,6 +69,7 @@ export class UsersService {
       goal: user.goal,
       businessSize: user.businessSize,
       followerRange: user.followerRange,
+      audienceProofs: mapAudienceProofs(audienceProofs),
       approvalStatus: user.approvalStatus,
       canAccessPanel: influencerCanAccessPanel(user),
       canSendOffers: influencerCanSendOffers(user),
@@ -72,15 +79,31 @@ export class UsersService {
     };
   }
 
+  private async listAudienceProofs(userId: string): Promise<AudienceProofCard[]> {
+    return this.prisma.audienceProof.findMany({
+      where: { userId },
+      orderBy: { sortOrder: 'asc' },
+      select: audienceProofSelect,
+    });
+  }
+
+  async serialize(user: User) {
+    const audienceProofs =
+      user.role === UserRole.INFLUENCER
+        ? await this.listAudienceProofs(user.id)
+        : [];
+    return this.toPublic(user, audienceProofs);
+  }
+
   async getById(id: string) {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) {
       throw new NotFoundException('User not found');
     }
-    return this.toPublic(user);
+    return this.serialize(user);
   }
 
-  toMarketplaceProfile(user: User) {
+  toMarketplaceProfile(user: User, audienceProofs: AudienceProofCard[] = []) {
     const categories = parseCategories(user.categories, user.category);
     return {
       id: user.id,
@@ -97,12 +120,20 @@ export class UsersService {
       businessSize: user.role === UserRole.BRAND ? user.businessSize : null,
       followerRange:
         user.role === UserRole.INFLUENCER ? user.followerRange : null,
+      audienceProofs:
+        user.role === UserRole.INFLUENCER
+          ? mapAudienceProofs(audienceProofs)
+          : [],
     };
   }
 
   async getPublicProfile(viewer: User, id: string) {
     if (viewer.id === id) {
-      return this.toMarketplaceProfile(viewer);
+      const proofs =
+        viewer.role === UserRole.INFLUENCER
+          ? await this.listAudienceProofs(viewer.id)
+          : [];
+      return this.toMarketplaceProfile(viewer, proofs);
     }
 
     const target = await this.prisma.user.findUnique({ where: { id } });
@@ -111,7 +142,11 @@ export class UsersService {
     }
 
     if (viewer.role === UserRole.ADMIN) {
-      return this.toMarketplaceProfile(target);
+      const proofs =
+        target.role === UserRole.INFLUENCER
+          ? await this.listAudienceProofs(target.id)
+          : [];
+      return this.toMarketplaceProfile(target, proofs);
     }
 
     const allowed = await this.canViewPublicProfile(viewer, target);
@@ -119,7 +154,11 @@ export class UsersService {
       throw new NotFoundException('پروفایل پیدا نشد');
     }
 
-    return this.toMarketplaceProfile(target);
+    const proofs =
+      target.role === UserRole.INFLUENCER
+        ? await this.listAudienceProofs(target.id)
+        : [];
+    return this.toMarketplaceProfile(target, proofs);
   }
 
   private async canViewPublicProfile(viewer: User, target: User) {
@@ -324,7 +363,7 @@ export class UsersService {
     });
 
     user = await this.ensureInstagramVerifyCode(user);
-    return this.toPublic(user);
+    return this.serialize(user);
   }
 
   async updatePhoto(user: User, file: Express.Multer.File) {
@@ -339,7 +378,7 @@ export class UsersService {
       where: { id: user.id },
       data: { photoUrl },
     });
-    return this.toPublic(updated);
+    return this.serialize(updated);
   }
 
   async removePhoto(user: User) {
@@ -350,6 +389,58 @@ export class UsersService {
       where: { id: user.id },
       data: { photoUrl: null },
     });
-    return this.toPublic(updated);
+    return this.serialize(updated);
+  }
+
+  async addAudienceProofs(user: User, files: Express.Multer.File[]) {
+    if (user.role !== UserRole.INFLUENCER) {
+      throw new BadRequestException('فقط بلاگرها می‌توانند مدارک مخاطب آپلود کنند');
+    }
+    if (!files?.length) {
+      throw new BadRequestException('حداقل یک تصویر ارسال کنید');
+    }
+
+    const existing = await this.listAudienceProofs(user.id);
+    const remaining = AUDIENCE_PROOF_MAX_IMAGES - existing.length;
+    if (remaining <= 0) {
+      throw new BadRequestException(
+        `حداکثر ${AUDIENCE_PROOF_MAX_IMAGES} تصویر برای آنالیتیکس مجاز است`,
+      );
+    }
+
+    const toSave = files.slice(0, remaining);
+    let sortOrder =
+      existing.reduce((max, img) => Math.max(max, img.sortOrder), -1) + 1;
+
+    for (const file of toSave) {
+      const relative = await this.uploads.saveImage('audience', file);
+      const url = this.uploads.toPublicUrl(relative);
+      await this.prisma.audienceProof.create({
+        data: {
+          userId: user.id,
+          url,
+          sortOrder: sortOrder++,
+        },
+      });
+    }
+
+    return this.serialize(user);
+  }
+
+  async removeAudienceProof(user: User, proofId: string) {
+    if (user.role !== UserRole.INFLUENCER) {
+      throw new BadRequestException('فقط بلاگرها می‌توانند مدارک مخاطب را حذف کنند');
+    }
+
+    const proof = await this.prisma.audienceProof.findFirst({
+      where: { id: proofId, userId: user.id },
+    });
+    if (!proof) {
+      throw new NotFoundException('تصویر پیدا نشد');
+    }
+
+    await this.uploads.deleteByPublicUrl(proof.url);
+    await this.prisma.audienceProof.delete({ where: { id: proofId } });
+    return this.serialize(user);
   }
 }

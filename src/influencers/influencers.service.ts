@@ -9,6 +9,10 @@ import {
   type Prisma,
   type User,
 } from '../generated/prisma/client';
+import {
+  audienceProofSelect,
+  mapAudienceProofs,
+} from '../common/audience-proof';
 import { parseCategories, primaryCategory } from '../common/categories';
 import { PrismaService } from '../prisma/prisma.service';
 import { ListInfluencersQueryDto } from './dto/list-influencers-query.dto';
@@ -25,7 +29,11 @@ export class InfluencersService {
     }
   }
 
-  toCard(user: User) {
+  toCard(
+    user: User & {
+      audienceProofs?: { id: string; url: string; sortOrder: number }[];
+    },
+  ) {
     const categories = parseCategories(user.categories, user.category);
     return {
       id: user.id,
@@ -38,6 +46,7 @@ export class InfluencersService {
       province: user.province,
       followerRange: user.followerRange!,
       bio: user.bio,
+      audienceProofs: mapAudienceProofs(user.audienceProofs),
     };
   }
 
@@ -73,6 +82,12 @@ export class InfluencersService {
 
     const influencers = await this.prisma.user.findMany({
       where,
+      include: {
+        audienceProofs: {
+          select: audienceProofSelect,
+          orderBy: { sortOrder: 'asc' },
+        },
+      },
       orderBy: { updatedAt: 'desc' },
       take: 100,
     });
@@ -95,6 +110,12 @@ export class InfluencersService {
         city: { not: null },
         province: { not: null },
         followerRange: { not: null },
+      },
+      include: {
+        audienceProofs: {
+          select: audienceProofSelect,
+          orderBy: { sortOrder: 'asc' },
+        },
       },
     });
 

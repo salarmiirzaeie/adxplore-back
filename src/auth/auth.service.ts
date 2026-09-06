@@ -14,6 +14,10 @@ import { SmsService } from '../sms/sms.service';
 import { generateOtpCode, normalizeIranPhone } from '../common/phone.util';
 import { parseCategories, primaryCategory } from '../common/categories';
 import {
+  audienceProofSelect,
+  mapAudienceProofs,
+} from '../common/audience-proof';
+import {
   influencerCanAccessPanel,
   influencerCanSendOffers,
   influencerNextScreen,
@@ -151,6 +155,14 @@ export class AuthService {
       role: user.role,
     };
     const accessToken = await this.jwt.signAsync(payload);
+    const audienceProofs =
+      user.role === UserRole.INFLUENCER
+        ? await this.prisma.audienceProof.findMany({
+            where: { userId: user.id },
+            orderBy: { sortOrder: 'asc' },
+            select: audienceProofSelect,
+          })
+        : [];
 
     return {
       accessToken,
@@ -173,6 +185,7 @@ export class AuthService {
         goal: user.goal,
         businessSize: user.businessSize,
         followerRange: user.followerRange,
+        audienceProofs: mapAudienceProofs(audienceProofs),
         photoUrl: user.photoUrl,
         approvalStatus: user.approvalStatus,
         canAccessPanel: influencerCanAccessPanel(user),

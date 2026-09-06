@@ -18,6 +18,10 @@ import {
   type Prisma,
 } from '../generated/prisma/client';
 import { parseCategories } from '../common/categories';
+import {
+  audienceProofSelect,
+  mapAudienceProofs,
+} from '../common/audience-proof';
 import { parseDeliverables } from '../common/deliverables';
 import {
   buildDmMessage,
@@ -234,6 +238,12 @@ export class AdminService {
 
     const items = await this.prisma.user.findMany({
       where,
+      include: {
+        audienceProofs: {
+          select: audienceProofSelect,
+          orderBy: { sortOrder: 'asc' },
+        },
+      },
       orderBy: [{ instagramDmMarkedSentAt: 'desc' }, { updatedAt: 'desc' }],
       take: 100,
     });
@@ -252,6 +262,7 @@ export class AdminService {
         instagramHandle: handle,
         photoUrl: u.photoUrl,
         bio: u.bio,
+        audienceProofs: mapAudienceProofs(u.audienceProofs),
         city: u.city,
         province: u.province,
         followerRange: u.followerRange,

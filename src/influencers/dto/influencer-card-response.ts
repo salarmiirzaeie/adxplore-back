@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { BrandCategory, FollowerRange } from '../../generated/prisma/client';
+import { AudienceProofResponse } from '../../users/dto/audience-proof-response';
 
 export class InfluencerCardResponse {
   @ApiProperty()
@@ -34,4 +35,7 @@ export class InfluencerCardResponse {
     example: 'تولیدکننده محتوای زیبایی و لایف‌استایل.',
   })
   bio!: string | null;
+
+  @ApiProperty({ type: AudienceProofResponse, isArray: true })
+  audienceProofs!: AudienceProofResponse[];
 }

@@ -6,6 +6,7 @@ import {
   FollowerRange,
   UserRole,
 } from '../../generated/prisma/client';
+import { AudienceProofResponse } from './audience-proof-response';
 
 /** Marketplace profile (no phone / approval internals). */
 export class PublicProfileResponse {
@@ -50,4 +51,12 @@ export class PublicProfileResponse {
 
   @ApiPropertyOptional({ enum: FollowerRange, nullable: true })
   followerRange!: FollowerRange | null;
+
+  @ApiProperty({
+    type: AudienceProofResponse,
+    isArray: true,
+    description:
+      'Influencer Instagram insights / audience screenshots shown to brands. Empty for brands.',
+  })
+  audienceProofs!: AudienceProofResponse[];
 }
