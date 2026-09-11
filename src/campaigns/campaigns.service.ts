@@ -434,6 +434,33 @@ export class CampaignsService {
     return this.getMine(user, id);
   }
 
+  async reorderImages(user: User, id: string, imageIds: string[]) {
+    const campaign = await this.getOwned(user, id);
+    const existingIds = campaign.images.map((img) => img.id);
+    if (existingIds.length !== imageIds.length) {
+      throw new BadRequestException('ترتیب تصاویر نامعتبر است');
+    }
+    const existingSet = new Set(existingIds);
+    const seen = new Set<string>();
+    for (const imageId of imageIds) {
+      if (!existingSet.has(imageId) || seen.has(imageId)) {
+        throw new BadRequestException('ترتیب تصاویر نامعتبر است');
+      }
+      seen.add(imageId);
+    }
+
+    await this.prisma.$transaction(
+      imageIds.map((imageId, sortOrder) =>
+        this.prisma.campaignImage.update({
+          where: { id: imageId },
+          data: { sortOrder },
+        }),
+      ),
+    );
+
+    return this.getMine(user, id);
+  }
+
   async removeImage(user: User, campaignId: string, imageId: string) {
     const campaign = await this.getOwned(user, campaignId);
     const image = campaign.images.find((img) => img.id === imageId);

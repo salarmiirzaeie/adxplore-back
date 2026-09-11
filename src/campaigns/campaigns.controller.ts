@@ -33,6 +33,7 @@ import { CampaignsService } from './campaigns.service';
 import { BrowseCampaignsQueryDto } from './dto/browse-campaigns-query.dto';
 import { CampaignResponse } from './dto/campaign-response';
 import { CreateCampaignDto } from './dto/create-campaign.dto';
+import { ReorderCampaignImagesDto } from './dto/reorder-campaign-images.dto';
 import { UpdateCampaignDto } from './dto/update-campaign.dto';
 
 @ApiTags('campaigns')
@@ -115,6 +116,17 @@ export class CampaignsController {
     @UploadedFiles() files: Express.Multer.File[],
   ) {
     return this.campaigns.addImages(user, id, files);
+  }
+
+  @Patch(':id/images/order')
+  @ApiOperation({ summary: 'Reorder campaign images (brand owner)' })
+  @ApiOkResponse({ type: CampaignResponse })
+  reorderImages(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Body() dto: ReorderCampaignImagesDto,
+  ) {
+    return this.campaigns.reorderImages(user, id, dto.imageIds);
   }
 
   @Delete(':id/images/:imageId')
