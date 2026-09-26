@@ -81,12 +81,13 @@ export class AuthUserResponse {
 
   @ApiProperty({
     description:
-      'True after follow + DM (or if already approved). Panel browse is allowed; sending offers needs canSendOffers.',
+      'True after follow + DM, or immediately when INFLUENCER_INSTAGRAM_VERIFICATION_ENABLED is false.',
   })
   canAccessPanel!: boolean;
 
   @ApiProperty({
-    description: 'True only after admin approval. Required to send offers.',
+    description:
+      'True after admin approval, or when INFLUENCER_ADMIN_APPROVAL_REQUIRED is false and the profile is complete.',
   })
   canSendOffers!: boolean;
 

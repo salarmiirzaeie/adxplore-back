@@ -21,6 +21,10 @@ import {
   canBrandInvite,
   isCampaignInExplore,
 } from '../common/campaign-status';
+import {
+  BRAND_INFLUENCER_DISCOVERY_DISABLED,
+  isBrandInfluencerDiscoveryEnabled,
+} from '../common/influencer-approval';
 import { invitationCampaignSelect, partySelect } from '../common/party-select';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -109,6 +113,9 @@ export class InvitationsService {
     if (user.role !== UserRole.BRAND) {
       throw new ForbiddenException('فقط برندها می‌توانند دعوت بفرستند');
     }
+    if (!isBrandInfluencerDiscoveryEnabled()) {
+      throw new ForbiddenException(BRAND_INFLUENCER_DISCOVERY_DISABLED);
+    }
 
     const campaign = await this.prisma.campaign.findUnique({
       where: { id: dto.campaignId },
@@ -195,6 +202,9 @@ export class InvitationsService {
     user: User,
     dto: { campaignId: string; influencerIds: string[]; message?: string },
   ) {
+    if (!isBrandInfluencerDiscoveryEnabled()) {
+      throw new ForbiddenException(BRAND_INFLUENCER_DISCOVERY_DISABLED);
+    }
     const uniqueIds = [...new Set(dto.influencerIds.filter(Boolean))];
     const created = [];
     const skipped: string[] = [];

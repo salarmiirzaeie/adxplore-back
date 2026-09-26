@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
+import { syncInfluencerLaunchApproval } from '../common/influencer-approval';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtPayload } from './jwt-payload';
 
@@ -29,6 +30,6 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
-    return user;
+    return syncInfluencerLaunchApproval(this.prisma, user);
   }
 }

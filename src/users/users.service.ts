@@ -26,7 +26,10 @@ import {
   influencerCanAccessPanel,
   influencerCanSendOffers,
   influencerNextScreen,
+  isInfluencerAdminApprovalRequired,
   isInfluencerProfileComplete,
+  isInstagramVerificationEnabled,
+  syncInfluencerLaunchApproval,
 } from '../common/influencer-approval';
 import {
   buildInstagramApprovalPayload,
@@ -88,11 +91,12 @@ export class UsersService {
   }
 
   async serialize(user: User) {
+    const synced = await syncInfluencerLaunchApproval(this.prisma, user);
     const audienceProofs =
-      user.role === UserRole.INFLUENCER
-        ? await this.listAudienceProofs(user.id)
+      synced.role === UserRole.INFLUENCER
+        ? await this.listAudienceProofs(synced.id)
         : [];
-    return this.toPublic(user, audienceProofs);
+    return this.toPublic(synced, audienceProofs);
   }
 
   async getById(id: string) {
@@ -195,6 +199,7 @@ export class UsersService {
   }
 
   async ensureInstagramVerifyCode(user: User): Promise<User> {
+    if (!isInstagramVerificationEnabled()) return user;
     if (user.role !== UserRole.INFLUENCER) return user;
     if (user.instagramVerifyCode) return user;
     if (!isInfluencerProfileComplete(user)) return user;
@@ -242,11 +247,15 @@ export class UsersService {
     }
 
     const withCode = await this.ensureInstagramVerifyCode(user);
+    const autoApprove = !isInfluencerAdminApprovalRequired();
     const updated = await this.prisma.user.update({
       where: { id: user.id },
       data: {
         instagramDmMarkedSentAt: new Date(),
-        approvalStatus: InfluencerApprovalStatus.PENDING,
+        approvalStatus: autoApprove
+          ? InfluencerApprovalStatus.APPROVED
+          : InfluencerApprovalStatus.PENDING,
+        ...(autoApprove ? { approvedAt: new Date() } : {}),
         rejectedAt: null,
         rejectionReason: null,
       },

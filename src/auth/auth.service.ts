@@ -21,6 +21,7 @@ import {
   influencerCanAccessPanel,
   influencerCanSendOffers,
   influencerNextScreen,
+  syncInfluencerLaunchApproval,
 } from '../common/influencer-approval';
 import { JwtPayload } from './jwt-payload';
 
@@ -128,7 +129,10 @@ export class AuthService {
       data: { userId: user.id },
     });
 
-    return this.issueToken(user, isNewUser);
+    return this.issueToken(
+      await syncInfluencerLaunchApproval(this.prisma, user),
+      isNewUser,
+    );
   }
 
   /** Admin panel: phone + password (no OTP). */
@@ -145,7 +149,10 @@ export class AuthService {
       throw new UnauthorizedException('شماره یا رمز عبور نادرست است');
     }
 
-    return this.issueToken(user, false);
+    return this.issueToken(
+      await syncInfluencerLaunchApproval(this.prisma, user),
+      false,
+    );
   }
 
   private async issueToken(user: User, isNewUser: boolean) {

@@ -86,12 +86,20 @@ Enums: `BrandCategory`, `BrandGoal`, `BusinessSize`, `FollowerRange` — see Swa
 
 After OTP signup and profile onboarding, the influencer follows [@adxplore.ir](https://www.instagram.com/adxplore.ir/) and DMs a unique code, then can **browse the panel**. They cannot **send offers** (and are hidden from brands) until an admin approves.
 
+Two server env flags turn that off for the first users. Leave them `false` (or unset) so a finished influencer profile is stored as `APPROVED` and can work immediately. Set both to `true` and restart the API when follow + DM and admin review should be required again. The panel (`adxplore-front`) uses the same names with a `VITE_` prefix, including `VITE_BRAND_INFLUENCER_DISCOVERY_ENABLED`. Rebuild the panel after changing them.
+
+| Env | `false` | `true` |
+|-----|---------|--------|
+| `INFLUENCER_INSTAGRAM_VERIFICATION_ENABLED` | Skip follow + DM. Panel opens after onboarding. | Follow + DM required before the panel. |
+| `INFLUENCER_ADMIN_APPROVAL_REQUIRED` | No admin review. Profile is saved as approved. | Offers and brand discovery wait for admin approval. |
+| `BRAND_INFLUENCER_DISCOVERY_ENABLED` | Brand panel hides influencer explore and cannot invite influencers to campaigns. | Brands can browse influencers and send campaign invites. |
+
 Client routing from `GET /v1/users/me` (and OTP verify) fields:
 
-- `nextScreen`: `ONBOARDING` → `INSTAGRAM_APPROVAL` → `PANEL` (panel after they tap «پیام را فرستادم»)
-- `canAccessPanel`: `true` after follow + DM confirm
-- `canSendOffers`: `true` only after admin approval
-- `approvalStatus`: `PENDING` | `APPROVED` | `REJECTED` (influencers only)
+- `nextScreen`: `ONBOARDING` → `INSTAGRAM_APPROVAL` → `PANEL` (panel right after onboarding while Instagram verification is off)
+- `canAccessPanel`: `true` after follow + DM, or right after onboarding when that flag is off
+- `canSendOffers`: `true` after admin approval, or as soon as the profile is approved by the launch flag
+- `approvalStatus`: `PENDING` | `APPROVED` | `REJECTED` (influencers only). With admin approval off, a finished profile is saved as `APPROVED`.
 
 | Method | Path | Description |
 |--------|------|-------------|

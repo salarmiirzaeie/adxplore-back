@@ -14,6 +14,10 @@ import {
   mapAudienceProofs,
 } from '../common/audience-proof';
 import { parseCategories, primaryCategory } from '../common/categories';
+import {
+  BRAND_INFLUENCER_DISCOVERY_DISABLED,
+  isBrandInfluencerDiscoveryEnabled,
+} from '../common/influencer-approval';
 import { PrismaService } from '../prisma/prisma.service';
 import { ListInfluencersQueryDto } from './dto/list-influencers-query.dto';
 
@@ -26,6 +30,9 @@ export class InfluencersService {
       throw new ForbiddenException(
         'فقط برندها می‌توانند اینفلوئنسرها را ببینند',
       );
+    }
+    if (!isBrandInfluencerDiscoveryEnabled()) {
+      throw new ForbiddenException(BRAND_INFLUENCER_DISCOVERY_DISABLED);
     }
   }
 
